@@ -12,6 +12,16 @@ pub trait Atom {
     fn unpack(src: <Self::Impl as AtomicImpl>::Inner) -> Self;
 }
 
+pub trait AtomLogic: Atom
+where
+    Self::Impl: AtomicLogicImpl
+{}
+
+pub trait AtomInteger: Atom
+where
+    Self::Impl: AtomicIntegerImpl,
+{}
+
 pub struct Atomic<T: Atom>(T::Impl);
 
 impl<T: Atom> Atomic<T> {
@@ -68,8 +78,10 @@ impl<T: Atom> Atomic<T> {
     }
 }
 
+// TODO: the `where` bound should not be necessary as the `AtomLogic` trait
+// already specifies this. Maybe we can fix this in the future.
 #[cfg(target_has_atomic = "cas")]
-impl<T: Atom> Atomic<T>
+impl<T: AtomLogic> Atomic<T>
 where
     T::Impl: AtomicLogicImpl,
 {
@@ -88,10 +100,12 @@ where
 }
 
 
+// TODO: the `where` bound should not be necessary as the `AtomInteger` trait
+// already specifies this. Maybe we can fix this in the future.
 #[cfg(target_has_atomic = "cas")]
-impl<T: Atom> Atomic<T>
+impl<T: AtomInteger> Atomic<T>
 where
-    T::Impl: AtomicIntImpl,
+    T::Impl: AtomicIntegerImpl,
 {
     pub fn fetch_add(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_add(val.pack(), order))
@@ -150,7 +164,7 @@ pub trait AtomicLogicImpl: AtomicImpl {
 }
 
 #[cfg(target_has_atomic = "cas")]
-pub trait AtomicIntImpl: AtomicImpl {
+pub trait AtomicIntegerImpl: AtomicImpl {
     fn fetch_add(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
     fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
 }
@@ -300,6 +314,8 @@ macro_rules! impl_std_atomics {
             id_pack_unpack!();
         }
 
+        impl AtomLogic for $ty {}
+
         impl AtomicImpl for atomic::$impl_ty {
             type Inner = $ty;
             pass_through_methods!(atomic::$impl_ty);
@@ -311,14 +327,16 @@ macro_rules! impl_std_atomics {
         }
 
         #[cfg(target_has_atomic = "cas")]
-        impl_std_atomics!(@int_methods $impl_ty, $is_int);
+        impl_std_atomics!(@int_methods $ty, $impl_ty, $is_int);
     };
-    (@int_methods $impl_ty:ident, true) => {
-        impl AtomicIntImpl for atomic::$impl_ty {
+    (@int_methods $ty:ty, $impl_ty:ident, true) => {
+        impl AtomInteger for $ty {}
+
+        impl AtomicIntegerImpl for atomic::$impl_ty {
             integer_pass_through_methods!();
         }
     };
-    (@int_methods $impl_ty:ident, false) => {};
+    (@int_methods $ty:ty, $impl_ty:ident, false) => {};
 }
 
 #[cfg(target_has_atomic = "8")] impl_std_atomics!(bool, AtomicBool, false);
