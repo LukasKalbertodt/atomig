@@ -30,14 +30,18 @@ impl<T: Atom> Atomic<T> {
     pub fn store(&self, v: T, order: Ordering) {
         self.0.store(v.pack(), order);
     }
+
+    #[cfg(target_has_atomic = "cas")]
     pub fn swap(&self, v: T, order: Ordering) -> T {
         T::unpack(self.0.swap(v.pack(), order))
     }
 
+    #[cfg(target_has_atomic = "cas")]
     pub fn compare_and_swap(&self, current: T, new: T, order: Ordering) -> T {
         T::unpack(self.0.compare_and_swap(current.pack(), new.pack(), order))
     }
 
+    #[cfg(target_has_atomic = "cas")]
     pub fn compare_exchange(
         &self,
         current: T,
@@ -50,6 +54,7 @@ impl<T: Atom> Atomic<T> {
             .map_err(T::unpack)
     }
 
+    #[cfg(target_has_atomic = "cas")]
     pub fn compare_exchange_weak(
         &self,
         current: T,
@@ -63,6 +68,7 @@ impl<T: Atom> Atomic<T> {
     }
 }
 
+#[cfg(target_has_atomic = "cas")]
 impl<T: Atom> Atomic<T>
 where
     T::Impl: AtomicLogicImpl,
@@ -82,6 +88,7 @@ where
 }
 
 
+#[cfg(target_has_atomic = "cas")]
 impl<T: Atom> Atomic<T>
 where
     T::Impl: AtomicIntImpl,
@@ -103,8 +110,11 @@ pub trait AtomicImpl {
     fn into_inner(self) -> Self::Inner;
     fn load(&self, order: Ordering) -> Self::Inner;
     fn store(&self, v: Self::Inner, order: Ordering);
+
+    #[cfg(target_has_atomic = "cas")]
     fn swap(&self, v: Self::Inner, order: Ordering) -> Self::Inner;
 
+    #[cfg(target_has_atomic = "cas")]
     fn compare_and_swap(
         &self,
         current: Self::Inner,
@@ -112,6 +122,7 @@ pub trait AtomicImpl {
         order: Ordering,
     ) -> Self::Inner;
 
+    #[cfg(target_has_atomic = "cas")]
     fn compare_exchange(
         &self,
         current: Self::Inner,
@@ -120,6 +131,7 @@ pub trait AtomicImpl {
         failure: Ordering,
     ) -> Result<Self::Inner, Self::Inner>;
 
+    #[cfg(target_has_atomic = "cas")]
     fn compare_exchange_weak(
         &self,
         current: Self::Inner,
@@ -129,6 +141,7 @@ pub trait AtomicImpl {
     ) -> Result<Self::Inner, Self::Inner>;
 }
 
+#[cfg(target_has_atomic = "cas")]
 pub trait AtomicLogicImpl: AtomicImpl {
     fn fetch_and(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
     fn fetch_nand(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
@@ -136,6 +149,7 @@ pub trait AtomicLogicImpl: AtomicImpl {
     fn fetch_xor(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
 }
 
+#[cfg(target_has_atomic = "cas")]
 pub trait AtomicIntImpl: AtomicImpl {
     fn fetch_add(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
     fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
@@ -164,27 +178,35 @@ macro_rules! pass_through_methods {
         fn new(v: Self::Inner) -> Self {
             <$ty>::new(v)
         }
+
         #[inline(always)]
         fn get_mut(&mut self) -> &mut Self::Inner {
             self.get_mut()
         }
+
         #[inline(always)]
         fn into_inner(self) -> Self::Inner {
             self.into_inner()
         }
+
         #[inline(always)]
         fn load(&self, order: Ordering) -> Self::Inner {
             self.load(order)
         }
+
         #[inline(always)]
         fn store(&self, v: Self::Inner, order: Ordering) {
             self.store(v, order)
         }
+
         #[inline(always)]
+        #[cfg(target_has_atomic = "cas")]
         fn swap(&self, v: Self::Inner, order: Ordering) -> Self::Inner {
             self.swap(v, order)
         }
+
         #[inline(always)]
+        #[cfg(target_has_atomic = "cas")]
         fn compare_and_swap(
             &self,
             current: Self::Inner,
@@ -193,7 +215,9 @@ macro_rules! pass_through_methods {
         ) -> Self::Inner {
             self.compare_and_swap(current, new, order)
         }
+
         #[inline(always)]
+        #[cfg(target_has_atomic = "cas")]
         fn compare_exchange(
             &self,
             current: Self::Inner,
@@ -203,7 +227,9 @@ macro_rules! pass_through_methods {
         ) -> Result<Self::Inner, Self::Inner> {
             self.compare_exchange(current, new, success, failure)
         }
+
         #[inline(always)]
+        #[cfg(target_has_atomic = "cas")]
         fn compare_exchange_weak(
             &self,
             current: Self::Inner,
@@ -218,15 +244,22 @@ macro_rules! pass_through_methods {
 
 macro_rules! logical_pass_through_methods {
     () => {
+        #[inline(always)]
         fn fetch_and(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
             self.fetch_and(val, order)
         }
+
+        #[inline(always)]
         fn fetch_nand(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
             self.fetch_nand(val, order)
         }
+
+        #[inline(always)]
         fn fetch_or(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
             self.fetch_or(val, order)
         }
+
+        #[inline(always)]
         fn fetch_xor(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
             self.fetch_xor(val, order)
         }
@@ -235,9 +268,12 @@ macro_rules! logical_pass_through_methods {
 
 macro_rules! integer_pass_through_methods {
     () => {
+        #[inline(always)]
         fn fetch_add(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
             self.fetch_add(val, order)
         }
+
+        #[inline(always)]
         fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
             self.fetch_sub(val, order)
         }
@@ -269,10 +305,12 @@ macro_rules! impl_std_atomics {
             pass_through_methods!(atomic::$impl_ty);
         }
 
+        #[cfg(target_has_atomic = "cas")]
         impl AtomicLogicImpl for atomic::$impl_ty {
             logical_pass_through_methods!();
         }
 
+        #[cfg(target_has_atomic = "cas")]
         impl_std_atomics!(@int_methods $impl_ty, $is_int);
     };
     (@int_methods $impl_ty:ident, true) => {
