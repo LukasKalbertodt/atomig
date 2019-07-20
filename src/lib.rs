@@ -63,6 +63,25 @@ impl<T: Atom> Atomic<T> {
     }
 }
 
+impl<T: Atom> Atomic<T>
+where
+    T::Impl: AtomicLogicImpl,
+{
+    pub fn fetch_and(&self, val: T, order: Ordering) -> T {
+        T::unpack(self.0.fetch_and(val.pack(), order))
+    }
+    pub fn fetch_nand(&self, val: T, order: Ordering) -> T {
+        T::unpack(self.0.fetch_nand(val.pack(), order))
+    }
+    pub fn fetch_or(&self, val: T, order: Ordering) -> T {
+        T::unpack(self.0.fetch_or(val.pack(), order))
+    }
+    pub fn fetch_xor(&self, val: T, order: Ordering) -> T {
+        T::unpack(self.0.fetch_xor(val.pack(), order))
+    }
+}
+
+
 
 pub trait AtomicImpl {
     type Inner;
@@ -96,6 +115,13 @@ pub trait AtomicImpl {
         success: Ordering,
         failure: Ordering,
     ) -> Result<Self::Inner, Self::Inner>;
+}
+
+pub trait AtomicLogicImpl: AtomicImpl {
+    fn fetch_and(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+    fn fetch_nand(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+    fn fetch_or(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+    fn fetch_xor(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
 }
 
 // ===============================================================================================
@@ -172,6 +198,23 @@ macro_rules! pass_through_methods {
     };
 }
 
+macro_rules! logical_pass_through_methods {
+    () => {
+        fn fetch_and(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
+            self.fetch_and(val, order)
+        }
+        fn fetch_nand(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
+            self.fetch_nand(val, order)
+        }
+        fn fetch_or(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
+            self.fetch_or(val, order)
+        }
+        fn fetch_xor(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
+            self.fetch_xor(val, order)
+        }
+    };
+}
+
 #[cfg(target_has_atomic = "ptr")]
 impl<T> Atom for *mut T {
     type Impl = atomic::AtomicPtr<T>;
@@ -184,6 +227,7 @@ impl<T> AtomicImpl for atomic::AtomicPtr<T> {
     pass_through_methods!(atomic::AtomicPtr<T>);
 }
 
+
 macro_rules! impl_std_atomics {
     ($ty:ty, $impl_ty:ident) => {
         impl Atom for $ty {
@@ -195,9 +239,14 @@ macro_rules! impl_std_atomics {
             type Inner = $ty;
             pass_through_methods!(atomic::$impl_ty);
         }
+
+        impl AtomicLogicImpl for atomic::$impl_ty {
+            logical_pass_through_methods!();
+        }
     };
 }
 
+#[cfg(target_has_atomic = "8")] impl_std_atomics!(bool, AtomicBool);
 #[cfg(target_has_atomic = "8")] impl_std_atomics!(u8, AtomicU8);
 #[cfg(target_has_atomic = "8")] impl_std_atomics!(i8, AtomicI8);
 #[cfg(target_has_atomic = "16")] impl_std_atomics!(u16, AtomicU16);
