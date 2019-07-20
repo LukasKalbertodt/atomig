@@ -82,6 +82,18 @@ where
 }
 
 
+impl<T: Atom> Atomic<T>
+where
+    T::Impl: AtomicIntImpl,
+{
+    pub fn fetch_add(&self, val: T, order: Ordering) -> T {
+        T::unpack(self.0.fetch_add(val.pack(), order))
+    }
+    pub fn fetch_sub(&self, val: T, order: Ordering) -> T {
+        T::unpack(self.0.fetch_sub(val.pack(), order))
+    }
+}
+
 
 pub trait AtomicImpl {
     type Inner;
@@ -123,6 +135,12 @@ pub trait AtomicLogicImpl: AtomicImpl {
     fn fetch_or(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
     fn fetch_xor(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
 }
+
+pub trait AtomicIntImpl: AtomicImpl {
+    fn fetch_add(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+    fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+}
+
 
 // ===============================================================================================
 // ===== Implementations for standard library types
@@ -215,6 +233,17 @@ macro_rules! logical_pass_through_methods {
     };
 }
 
+macro_rules! integer_pass_through_methods {
+    () => {
+        fn fetch_add(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
+            self.fetch_add(val, order)
+        }
+        fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
+            self.fetch_sub(val, order)
+        }
+    };
+}
+
 #[cfg(target_has_atomic = "ptr")]
 impl<T> Atom for *mut T {
     type Impl = atomic::AtomicPtr<T>;
@@ -229,7 +258,7 @@ impl<T> AtomicImpl for atomic::AtomicPtr<T> {
 
 
 macro_rules! impl_std_atomics {
-    ($ty:ty, $impl_ty:ident) => {
+    ($ty:ty, $impl_ty:ident, $is_int:ident) => {
         impl Atom for $ty {
             type Impl = atomic::$impl_ty;
             id_pack_unpack!();
@@ -243,15 +272,23 @@ macro_rules! impl_std_atomics {
         impl AtomicLogicImpl for atomic::$impl_ty {
             logical_pass_through_methods!();
         }
+
+        impl_std_atomics!(@int_methods $impl_ty, $is_int);
     };
+    (@int_methods $impl_ty:ident, true) => {
+        impl AtomicIntImpl for atomic::$impl_ty {
+            integer_pass_through_methods!();
+        }
+    };
+    (@int_methods $impl_ty:ident, false) => {};
 }
 
-#[cfg(target_has_atomic = "8")] impl_std_atomics!(bool, AtomicBool);
-#[cfg(target_has_atomic = "8")] impl_std_atomics!(u8, AtomicU8);
-#[cfg(target_has_atomic = "8")] impl_std_atomics!(i8, AtomicI8);
-#[cfg(target_has_atomic = "16")] impl_std_atomics!(u16, AtomicU16);
-#[cfg(target_has_atomic = "16")] impl_std_atomics!(i16, AtomicI16);
-#[cfg(target_has_atomic = "32")] impl_std_atomics!(u32, AtomicU32);
-#[cfg(target_has_atomic = "32")] impl_std_atomics!(i32, AtomicI32);
-#[cfg(target_has_atomic = "64")] impl_std_atomics!(u64, AtomicU64);
-#[cfg(target_has_atomic = "64")] impl_std_atomics!(i64, AtomicI64);
+#[cfg(target_has_atomic = "8")] impl_std_atomics!(bool, AtomicBool, false);
+#[cfg(target_has_atomic = "8")] impl_std_atomics!(u8, AtomicU8, true);
+#[cfg(target_has_atomic = "8")] impl_std_atomics!(i8, AtomicI8, true);
+#[cfg(target_has_atomic = "16")] impl_std_atomics!(u16, AtomicU16, true);
+#[cfg(target_has_atomic = "16")] impl_std_atomics!(i16, AtomicI16, true);
+#[cfg(target_has_atomic = "32")] impl_std_atomics!(u32, AtomicU32, true);
+#[cfg(target_has_atomic = "32")] impl_std_atomics!(i32, AtomicI32, true);
+#[cfg(target_has_atomic = "64")] impl_std_atomics!(u64, AtomicU64, true);
+#[cfg(target_has_atomic = "64")] impl_std_atomics!(i64, AtomicI64, true);
