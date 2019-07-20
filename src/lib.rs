@@ -348,3 +348,5 @@ macro_rules! impl_std_atomics {
 #[cfg(target_has_atomic = "32")] impl_std_atomics!(i32, AtomicI32, true);
 #[cfg(target_has_atomic = "64")] impl_std_atomics!(u64, AtomicU64, true);
 #[cfg(target_has_atomic = "64")] impl_std_atomics!(i64, AtomicI64, true);
+#[cfg(target_has_atomic = "ptr")] impl_std_atomics!(usize, AtomicUsize, true);
+#[cfg(target_has_atomic = "ptr")] impl_std_atomics!(isize, AtomicIsize, true);
