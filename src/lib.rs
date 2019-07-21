@@ -1,6 +1,7 @@
 #![feature(cfg_target_has_atomic)]
 
-use std::sync::atomic::Ordering;
+/// Reexported from `std` for import convenience.
+pub use std::sync::atomic::Ordering;
 use crate::impls::{PrimitiveAtom, AtomicImpl, AtomicLogicImpl, AtomicIntegerImpl};
 
 pub mod impls;
