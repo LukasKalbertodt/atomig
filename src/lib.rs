@@ -48,7 +48,7 @@ use std::sync::atomic::{
 ///
 /// // Implementing `Atom` means that we can use `Atomic` with out type
 /// let a = Atomic::new(Port(80));
-/// a.store(Port(8080));
+/// a.store(Port(8080), Ordering::SeqCst);
 /// ```
 pub trait Atom {
     /// The atomic representation of this type.
