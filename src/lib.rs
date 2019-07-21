@@ -5,6 +5,8 @@ pub use std::sync::atomic::Ordering;
 use crate::impls::{PrimitiveAtom, AtomicImpl, AtomicLogicImpl, AtomicIntegerImpl};
 
 pub mod impls;
+#[cfg(test)]
+mod tests;
 
 
 // ===============================================================================================
