@@ -30,8 +30,8 @@ pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
 ///
 /// This trait is exactly implemented for all atomic types in
 /// `std::sync::atomic` and you cannot and should not implement this trait for
-/// your own types. Instead of using these methods directly, use [`Atomic`]
-/// which has the same interface.
+/// your own types. Instead of using these methods directly, use
+/// [`Atomic`][super::Atomic] which has the same interface.
 pub trait AtomicImpl: Sized + sealed::Sealed {
     type Inner: PrimitiveAtom<Impl = Self>;
 
