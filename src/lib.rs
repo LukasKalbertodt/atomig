@@ -115,10 +115,20 @@ where
 /// - Imagine you have strong types for distance measurements, including
 ///   `Meter(u64)`. It makes sense to implement `AtomInteger` for that type,
 ///   because adding the representation (`u64`) makes sense.
+/// - As another example for types that should *not* implement this type,
+///   consider `f64`. It can be represented by `u64` and additions on `f64` do
+///   make sense. *But* add adding the `u64` representations of two `f64` does
+///   not yield any meaningful result!
 pub trait AtomInteger: Atom
 where
     Impl<Self>: AtomicIntegerImpl,
 {}
+
+
+
+// ===============================================================================================
+// ===== The `Atomic<T>` type
+// ===============================================================================================
 
 pub struct Atomic<T: Atom>(Impl<T>);
 
@@ -213,17 +223,37 @@ where
     }
 }
 
+
+
+// ===============================================================================================
+// ===== All `Atomic*Impl` traits and `PrimitiveAtom`
+// ===============================================================================================
+
 mod sealed {
     /// You cannot implement this trait. That is the point.
     pub trait Sealed {}
 }
 
+/// Primitive types that can directly be used in an atomic way. You probably do
+/// not need to worry about this trait.
+///
+/// This trait is implemented exactly for every type that has a corresponding
+/// atomic type in `std::sync::atomic`. You cannot implement this trait for
+/// your own types; see [`Atom`] instead.
 pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
+    /// The standard library type that is the atomic version of `Self`.
     type Impl: AtomicImpl<Inner = Self>;
 }
 
-pub trait AtomicImpl {
-    type Inner;
+/// Common interface of all atomic types in `std::sync::atomic`. You probably
+/// do not need to worry about this trait.
+///
+/// This trait is exactly implemented for all atomic types in
+/// `std::sync::atomic` and you cannot and should not implement this trait for
+/// your own types. Instead of using these methods directly, use [`Atomic`]
+/// which has the same interface.
+pub trait AtomicImpl: Sized + sealed::Sealed {
+    type Inner: PrimitiveAtom<Impl = Self>;
 
     fn new(v: Self::Inner) -> Self;
     fn get_mut(&mut self) -> &mut Self::Inner;
@@ -261,6 +291,8 @@ pub trait AtomicImpl {
     ) -> Result<Self::Inner, Self::Inner>;
 }
 
+/// Atomic types from `std::sync::atomic` which support logical operations. You
+/// probably do not need to worry about this trait.
 #[cfg(target_has_atomic = "cas")]
 pub trait AtomicLogicImpl: AtomicImpl {
     fn fetch_and(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
@@ -269,11 +301,14 @@ pub trait AtomicLogicImpl: AtomicImpl {
     fn fetch_xor(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
 }
 
+/// Atomic types from `std::sync::atomic` which support integer operations. You
+/// probably do not need to worry about this trait.
 #[cfg(target_has_atomic = "cas")]
 pub trait AtomicIntegerImpl: AtomicImpl {
     fn fetch_add(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
     fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
 }
+
 
 
 // ===============================================================================================
@@ -292,6 +327,8 @@ macro_rules! id_pack_unpack {
     };
 }
 
+/// Expands to all methods from `AtomicImpl`, each forwarding to
+/// `self.that_method`.
 macro_rules! pass_through_methods {
     ($ty:ty) => {
         #[inline(always)]
@@ -362,6 +399,8 @@ macro_rules! pass_through_methods {
     };
 }
 
+/// Expands to all methods from `AtomicLogicImpl`, each forwarding to
+/// `self.that_method`.
 macro_rules! logical_pass_through_methods {
     () => {
         #[inline(always)]
@@ -386,6 +425,8 @@ macro_rules! logical_pass_through_methods {
     };
 }
 
+/// Expands to all methods from `AtomicIntegerImpl`, each forwarding to
+/// `self.that_method`.
 macro_rules! integer_pass_through_methods {
     () => {
         #[inline(always)]
@@ -400,23 +441,30 @@ macro_rules! integer_pass_through_methods {
     };
 }
 
+// ----- `*mut T` and `AtomicPtr` -----
 #[cfg(target_has_atomic = "ptr")]
 impl<T> Atom for *mut T {
     type Repr = Self;
     id_pack_unpack!();
 }
 
+#[cfg(target_has_atomic = "ptr")]
 impl<T> sealed::Sealed for *mut T {}
+#[cfg(target_has_atomic = "ptr")]
 impl<T> PrimitiveAtom for *mut T {
     type Impl = atomic::AtomicPtr<T>;
 }
 
+#[cfg(target_has_atomic = "ptr")]
+impl<T> sealed::Sealed for atomic::AtomicPtr<T> {}
 #[cfg(target_has_atomic = "ptr")]
 impl<T> AtomicImpl for atomic::AtomicPtr<T> {
     type Inner = *mut T;
     pass_through_methods!(atomic::AtomicPtr<T>);
 }
 
+
+// ----- Integers and `bool` -----
 
 macro_rules! impl_std_atomics {
     ($ty:ty, $impl_ty:ident, $is_int:ident) => {
@@ -432,6 +480,7 @@ macro_rules! impl_std_atomics {
 
         impl AtomLogic for $ty {}
 
+        impl sealed::Sealed for atomic::$impl_ty {}
         impl AtomicImpl for atomic::$impl_ty {
             type Inner = $ty;
             pass_through_methods!(atomic::$impl_ty);
@@ -467,6 +516,11 @@ macro_rules! impl_std_atomics {
 #[cfg(target_has_atomic = "ptr")] impl_std_atomics!(usize, AtomicUsize, true);
 #[cfg(target_has_atomic = "ptr")] impl_std_atomics!(isize, AtomicIsize, true);
 
+
+
+// ===============================================================================================
+// ===== Utilities
+// ===============================================================================================
 
 /// Tiny type alias for avoid long paths in this codebase.
 type Impl<A> = <<A as Atom>::Repr as PrimitiveAtom>::Impl;
