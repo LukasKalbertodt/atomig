@@ -1,3 +1,5 @@
+use super::Atom;
+
 macro_rules! gen_tests {
     (
         $mod_name:ident, $ty:ty, $val0:expr, $val1:expr,
@@ -114,4 +116,35 @@ gen_tests!(_u64,   u64,   7u64,   33u64,   true, true,  true);
 gen_tests!(_i64,   i64,   7i64,   33i64,   true, true,  true);
 gen_tests!(_usize, usize, 7usize, 33usize, true, true,  true);
 gen_tests!(_isize, isize, 7isize, 33isize, true, true,  true);
-gen_tests!(_ptr, *mut String, 0 as *mut String, 0xDEADBEEF as *mut String, false, false, false);
+gen_tests!(_ptr, *mut String, 0 as *mut String, 0xBADC0DE as *mut String, false, false, false);
+gen_tests!(custom, super::Foo, super::Foo::Nothing, super::Foo::Set(0b101), false, false, true);
+
+
+#[derive(Debug, PartialEq, Eq)]
+enum Foo {
+    Nothing,
+    Set(u8),
+}
+
+impl Default for Foo {
+    fn default() -> Self {
+        Foo::Set(0b10101010)
+    }
+}
+
+impl Atom for Foo {
+    type Repr = u16;
+    fn pack(self) -> Self::Repr {
+        match self {
+            Foo::Nothing => 0x01FF,
+            Foo::Set(s) => s as u16,
+        }
+    }
+    fn unpack(src: Self::Repr) -> Self {
+        if src & 0x0100 != 0 {
+            Foo::Nothing
+        } else {
+            Foo::Set((src & 0xFF) as u8)
+        }
+    }
+}
