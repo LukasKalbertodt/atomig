@@ -37,6 +37,8 @@ macro_rules! gen_tests {
 
             gen_tests!(@logic $val0, $val1, $with_logic);
 
+            gen_tests!(@integer $val0, $val1, $with_int);
+
             gen_tests!(@default $ty, $with_default);
 
 
@@ -75,6 +77,20 @@ macro_rules! gen_tests {
         }
     };
     (@logic $val0:expr, $val1:expr, false) => {};
+
+    (@integer $val0:expr, $val1:expr, true) => {
+        #[test]
+        fn integer() {
+            let a = Atomic::new($val0);
+            assert_eq!(a.fetch_add($val1, Ordering::SeqCst), $val0);
+            assert_eq!(a.load(Ordering::SeqCst), $val0.wrapping_add($val1));
+
+            let a = Atomic::new($val0);
+            assert_eq!(a.fetch_sub($val1, Ordering::SeqCst), $val0);
+            assert_eq!(a.load(Ordering::SeqCst), $val0.wrapping_sub($val1));
+        }
+    };
+    (@integer $val0:expr, $val1:expr, false) => {};
 
     (@default $ty:ty, true) => {
         #[test]
