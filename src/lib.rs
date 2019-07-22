@@ -1,14 +1,15 @@
 #![feature(cfg_target_has_atomic)]
 
-/// Reexported from `std` for import convenience.
-#[doc(no_inline)]
-pub use std::sync::atomic::Ordering;
+use std::fmt;
 use crate::impls::{PrimitiveAtom, AtomicImpl, AtomicLogicImpl, AtomicIntegerImpl};
 
 pub mod impls;
 #[cfg(test)]
 mod tests;
 
+/// Reexported from `std` for import convenience.
+#[doc(no_inline)]
+pub use std::sync::atomic::Ordering;
 
 // ===============================================================================================
 // ===== User faced `Atom*` traits
@@ -227,6 +228,23 @@ where
     }
 }
 
+impl<T: Atom + fmt::Debug> fmt::Debug for Atomic<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.load(Ordering::SeqCst).fmt(f)
+    }
+}
+
+impl<T: Atom + Default> Default for Atomic<T> {
+    fn default() -> Self {
+        Self::new(T::default())
+    }
+}
+
+impl<T: Atom> From<T> for Atomic<T> {
+    fn from(v: T) -> Self {
+        Self::new(v)
+    }
+}
 
 // ===============================================================================================
 // ===== Utilities
