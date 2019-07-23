@@ -1,4 +1,4 @@
-#![feature(cfg_target_has_atomic)]
+#![cfg_attr(feature = "nightly", feature(cfg_target_has_atomic))]
 
 use std::fmt;
 use crate::impls::{PrimitiveAtom, AtomicImpl, AtomicLogicImpl, AtomicIntegerImpl};
@@ -157,17 +157,17 @@ impl<T: Atom> Atomic<T> {
         self.0.store(v.pack(), order);
     }
 
-    #[cfg(target_has_atomic = "cas")]
+    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn swap(&self, v: T, order: Ordering) -> T {
         T::unpack(self.0.swap(v.pack(), order))
     }
 
-    #[cfg(target_has_atomic = "cas")]
+    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn compare_and_swap(&self, current: T, new: T, order: Ordering) -> T {
         T::unpack(self.0.compare_and_swap(current.pack(), new.pack(), order))
     }
 
-    #[cfg(target_has_atomic = "cas")]
+    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn compare_exchange(
         &self,
         current: T,
@@ -180,7 +180,7 @@ impl<T: Atom> Atomic<T> {
             .map_err(T::unpack)
     }
 
-    #[cfg(target_has_atomic = "cas")]
+    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn compare_exchange_weak(
         &self,
         current: T,
@@ -196,7 +196,7 @@ impl<T: Atom> Atomic<T> {
 
 // TODO: the `where` bound should not be necessary as the `AtomLogic` trait
 // already specifies this. Maybe we can fix this in the future.
-#[cfg(target_has_atomic = "cas")]
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
 impl<T: AtomLogic> Atomic<T>
 where
     Impl<T>: AtomicLogicImpl,
@@ -218,7 +218,7 @@ where
 
 // TODO: the `where` bound should not be necessary as the `AtomInteger` trait
 // already specifies this. Maybe we can fix this in the future.
-#[cfg(target_has_atomic = "cas")]
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
 impl<T: AtomInteger> Atomic<T>
 where
     Impl<T>: AtomicIntegerImpl,

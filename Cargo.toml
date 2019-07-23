@@ -6,6 +6,7 @@ edition = "2018"
 
 [features]
 derive = ["atomig-macro"]
+nightly = []
 
 [dependencies]
 atomig-macro = { path = "atomig-macro", optional = true }

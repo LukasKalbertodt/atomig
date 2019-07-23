@@ -41,10 +41,10 @@ pub trait AtomicImpl: Sized + sealed::Sealed {
     fn load(&self, order: Ordering) -> Self::Inner;
     fn store(&self, v: Self::Inner, order: Ordering);
 
-    #[cfg(target_has_atomic = "cas")]
+    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     fn swap(&self, v: Self::Inner, order: Ordering) -> Self::Inner;
 
-    #[cfg(target_has_atomic = "cas")]
+    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     fn compare_and_swap(
         &self,
         current: Self::Inner,
@@ -52,7 +52,7 @@ pub trait AtomicImpl: Sized + sealed::Sealed {
         order: Ordering,
     ) -> Self::Inner;
 
-    #[cfg(target_has_atomic = "cas")]
+    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     fn compare_exchange(
         &self,
         current: Self::Inner,
@@ -61,7 +61,7 @@ pub trait AtomicImpl: Sized + sealed::Sealed {
         failure: Ordering,
     ) -> Result<Self::Inner, Self::Inner>;
 
-    #[cfg(target_has_atomic = "cas")]
+    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     fn compare_exchange_weak(
         &self,
         current: Self::Inner,
@@ -72,7 +72,7 @@ pub trait AtomicImpl: Sized + sealed::Sealed {
 }
 
 /// Atomic types from `std::sync::atomic` which support logical operations.
-#[cfg(target_has_atomic = "cas")]
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
 pub trait AtomicLogicImpl: AtomicImpl {
     fn fetch_and(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
     fn fetch_nand(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
@@ -81,7 +81,7 @@ pub trait AtomicLogicImpl: AtomicImpl {
 }
 
 /// Atomic types from `std::sync::atomic` which support integer operations.
-#[cfg(target_has_atomic = "cas")]
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
 pub trait AtomicIntegerImpl: AtomicImpl {
     fn fetch_add(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
     fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
@@ -135,13 +135,13 @@ macro_rules! pass_through_methods {
         }
 
         #[inline(always)]
-        #[cfg(target_has_atomic = "cas")]
+        #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
         fn swap(&self, v: Self::Inner, order: Ordering) -> Self::Inner {
             self.swap(v, order)
         }
 
         #[inline(always)]
-        #[cfg(target_has_atomic = "cas")]
+        #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
         fn compare_and_swap(
             &self,
             current: Self::Inner,
@@ -152,7 +152,7 @@ macro_rules! pass_through_methods {
         }
 
         #[inline(always)]
-        #[cfg(target_has_atomic = "cas")]
+        #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
         fn compare_exchange(
             &self,
             current: Self::Inner,
@@ -164,7 +164,7 @@ macro_rules! pass_through_methods {
         }
 
         #[inline(always)]
-        #[cfg(target_has_atomic = "cas")]
+        #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
         fn compare_exchange_weak(
             &self,
             current: Self::Inner,
@@ -220,22 +220,22 @@ macro_rules! integer_pass_through_methods {
 }
 
 // ----- `*mut T` and `AtomicPtr` -----
-#[cfg(target_has_atomic = "ptr")]
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "ptr"))]
 impl<T> Atom for *mut T {
     type Repr = Self;
     id_pack_unpack!();
 }
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "ptr"))]
 impl<T> sealed::Sealed for *mut T {}
-#[cfg(target_has_atomic = "ptr")]
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "ptr"))]
 impl<T> PrimitiveAtom for *mut T {
     type Impl = atomic::AtomicPtr<T>;
 }
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "ptr"))]
 impl<T> sealed::Sealed for atomic::AtomicPtr<T> {}
-#[cfg(target_has_atomic = "ptr")]
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "ptr"))]
 impl<T> AtomicImpl for atomic::AtomicPtr<T> {
     type Inner = *mut T;
     pass_through_methods!(atomic::AtomicPtr<T>);
@@ -264,12 +264,12 @@ macro_rules! impl_std_atomics {
             pass_through_methods!(atomic::$impl_ty);
         }
 
-        #[cfg(target_has_atomic = "cas")]
+        #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
         impl AtomicLogicImpl for atomic::$impl_ty {
             logical_pass_through_methods!();
         }
 
-        #[cfg(target_has_atomic = "cas")]
+        #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
         impl_std_atomics!(@int_methods $ty, $impl_ty, $is_int);
     };
     (@int_methods $ty:ty, $impl_ty:ident, true) => {
@@ -282,14 +282,25 @@ macro_rules! impl_std_atomics {
     (@int_methods $ty:ty, $impl_ty:ident, false) => {};
 }
 
-#[cfg(target_has_atomic = "8")] impl_std_atomics!(bool, AtomicBool, false);
-#[cfg(target_has_atomic = "8")] impl_std_atomics!(u8, AtomicU8, true);
-#[cfg(target_has_atomic = "8")] impl_std_atomics!(i8, AtomicI8, true);
-#[cfg(target_has_atomic = "16")] impl_std_atomics!(u16, AtomicU16, true);
-#[cfg(target_has_atomic = "16")] impl_std_atomics!(i16, AtomicI16, true);
-#[cfg(target_has_atomic = "32")] impl_std_atomics!(u32, AtomicU32, true);
-#[cfg(target_has_atomic = "32")] impl_std_atomics!(i32, AtomicI32, true);
-#[cfg(target_has_atomic = "64")] impl_std_atomics!(u64, AtomicU64, true);
-#[cfg(target_has_atomic = "64")] impl_std_atomics!(i64, AtomicI64, true);
-#[cfg(target_has_atomic = "ptr")] impl_std_atomics!(usize, AtomicUsize, true);
-#[cfg(target_has_atomic = "ptr")] impl_std_atomics!(isize, AtomicIsize, true);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "8"))]
+impl_std_atomics!(bool, AtomicBool, false);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "8"))]
+impl_std_atomics!(u8, AtomicU8, true);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "8"))]
+impl_std_atomics!(i8, AtomicI8, true);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "16"))]
+impl_std_atomics!(u16, AtomicU16, true);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "16"))]
+impl_std_atomics!(i16, AtomicI16, true);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "32"))]
+impl_std_atomics!(u32, AtomicU32, true);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "32"))]
+impl_std_atomics!(i32, AtomicI32, true);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "64"))]
+impl_std_atomics!(u64, AtomicU64, true);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "64"))]
+impl_std_atomics!(i64, AtomicI64, true);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "ptr"))]
+impl_std_atomics!(usize, AtomicUsize, true);
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "ptr"))]
+impl_std_atomics!(isize, AtomicIsize, true);
