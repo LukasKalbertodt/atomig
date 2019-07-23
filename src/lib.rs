@@ -11,6 +11,7 @@ mod tests;
 #[doc(no_inline)]
 pub use std::sync::atomic::Ordering;
 
+#[cfg(feature = "derive")]
 pub use atomig_macro::{Atom, AtomInteger, AtomLogic};
 
 // ===============================================================================================

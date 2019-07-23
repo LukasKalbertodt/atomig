@@ -4,5 +4,13 @@ version = "0.1.0"
 authors = ["Lukas Kalbertodt <lukas.kalbertodt@gmail.com>"]
 edition = "2018"
 
+[features]
+derive = ["atomig-macro"]
+
 [dependencies]
-atomig-macro = { path = "atomig-macro" }
+atomig-macro = { path = "atomig-macro", optional = true }
+
+
+[[example]]
+name = "custom_type"
+required-features = ["derive"]
