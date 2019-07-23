@@ -1,7 +1,7 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{
     parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Error, Fields,
@@ -18,6 +18,54 @@ pub fn derive_atom(input: TokenStream) -> TokenStream {
     gen_atom_impl(&input)
         .unwrap_or_else(|e| e.to_compile_error())
         .into()
+}
+
+/// Custom derive for the `AtomLogic` trait. Please see the trait's
+/// documentation for more information on this derive.
+#[proc_macro_derive(AtomLogic)]
+pub fn derive_atom_logic(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    gen_marker_trait_impl("AtomLogic", &input)
+        .unwrap_or_else(|e| e.to_compile_error())
+        .into()
+}
+
+/// Custom derive for the `AtomInteger` trait. Please see the trait's
+/// documentation for more information on this derive.
+#[proc_macro_derive(AtomInteger)]
+pub fn derive_atom_integer(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    gen_marker_trait_impl("AtomInteger", &input)
+        .unwrap_or_else(|e| e.to_compile_error())
+        .into()
+}
+
+fn gen_marker_trait_impl(trait_name: &str, input: &DeriveInput) -> Result<TokenStream2, Error> {
+    match input.data {
+        Data::Struct(_) => {
+            let type_name = &input.ident;
+            let trait_name = Ident::new(trait_name, Span::call_site());
+            let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+            Ok(quote! {
+                impl #impl_generics atomig::#trait_name
+                    for #type_name #ty_generics #where_clause {}
+            })
+        }
+        Data::Enum(_) => {
+            let msg = format!(
+                "`{}` cannot be derived for enums as this is almost always incorrect to do. \
+                    Please read the documentation of `{}` carefully. If you still think you \
+                    want to implement this trait, you have to do it manually.",
+                trait_name,
+                trait_name,
+            );
+            Err(Error::new(Span::call_site(), msg))
+        }
+        Data::Union(_) => {
+            let msg = format!("`{}` cannot be derived for unions", trait_name);
+            Err(Error::new(Span::call_site(), msg))
+        }
+    }
 }
 
 /// The actual implementation for `derive(Atom)`.

@@ -11,7 +11,7 @@ mod tests;
 #[doc(no_inline)]
 pub use std::sync::atomic::Ordering;
 
-pub use atomig_macro::Atom;
+pub use atomig_macro::{Atom, AtomInteger, AtomLogic};
 
 // ===============================================================================================
 // ===== User faced `Atom*` traits

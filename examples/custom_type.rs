@@ -17,10 +17,8 @@ enum Animal {
     Fox,
 }
 
-#[derive(Debug, PartialEq, Atom)]
+#[derive(Debug, PartialEq, Atom, AtomLogic)]
 struct BitSet(u16);
-
-impl AtomLogic for BitSet {}
 
 
 fn main() {
