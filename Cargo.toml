@@ -10,6 +10,9 @@ derive = ["atomig-macro"]
 [dependencies]
 atomig-macro = { path = "atomig-macro", optional = true }
 
+[package.metadata.docs.rs]
+all-features = true
+
 
 [[example]]
 name = "custom_type"
