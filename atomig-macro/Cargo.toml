@@ -1,8 +1,13 @@
 [package]
-name = "atomig"
+name = "atomig-macro"
 version = "0.1.0"
 authors = ["Lukas Kalbertodt <lukas.kalbertodt@gmail.com>"]
 edition = "2018"
 
+[lib]
+proc-macro = true
+
 [dependencies]
-atomig-macro = { path = "atomig-macro" }
+syn = "0.15"
+quote = "0.6"
+proc-macro2 = "0.4"
