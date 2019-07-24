@@ -8,7 +8,9 @@ Atomig: generic and convenient `std` atomics
 Offers `Atomic<T>` that can be used with primitive and custom types.
 *However*, it only works with types that can actually use atomic operations: a lock-based fallback for other types is not used!
 This crate is based on `std`'s atomics and therefore does not contain any `unsafe` code!
-This crate also does not have any dependencies by default.
+This crate also does not have any dependencies by default. If you enable the `serde` trait, then
+this crate will depend on "serde" and `Serialize` / `Deserialize` will be implemented for `Atomic<T>` when
+appropriate, using sequentially-consistent ordering.
 
 Simple example with primitive types:
 

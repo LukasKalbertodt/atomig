@@ -26,6 +26,10 @@ nightly = []
 
 [dependencies]
 atomig-macro = { version = "0.1.0", path = "atomig-macro", optional = true }
+serde = {version = "1", default-features = false, optional = true}
+
+[dev-dependencies]
+bincode = {version = "1"}
 
 [package.metadata.docs.rs]
 all-features = true
