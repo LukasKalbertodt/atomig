@@ -9,7 +9,7 @@ derive = ["atomig-macro"]
 nightly = []
 
 [dependencies]
-atomig-macro = { path = "atomig-macro", optional = true }
+atomig-macro = { version = "0.1.0", path = "atomig-macro", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true
