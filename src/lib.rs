@@ -108,8 +108,7 @@ pub use atomig_macro::{Atom, AtomInteger, AtomLogic};
 /// use atomic operations on it.
 ///
 /// ```
-/// use std::sync::atomic::Ordering;
-/// use atomig::{Atom, Atomic};
+/// use atomig::{Atom, Atomic, Ordering};
 ///
 /// struct Port(u16);
 ///
@@ -123,9 +122,59 @@ pub use atomig_macro::{Atom, AtomInteger, AtomLogic};
 ///     }
 /// }
 ///
-/// // Implementing `Atom` means that we can use `Atomic` with out type
+/// // Implementing `Atom` means that we can use `Atomic` with our type
 /// let a = Atomic::new(Port(80));
 /// a.store(Port(8080), Ordering::SeqCst);
+/// ```
+///
+///
+/// # Deriving this trait
+///
+/// Instead of implementing the trait manually (like shown above), you can
+/// derive it automatically in many cases. In order to use that feature, you
+/// have to enabled the Cargo feature 'derive'.
+///
+/// ```
+/// use atomig::{Atom, Atomic, Ordering};
+/// # #[cfg(feature = "derive")]
+/// # fn main() {
+///
+/// #[derive(Atom)]
+/// struct Port(u16);
+///
+/// let a = Atomic::new(Port(80));
+/// a.store(Port(8080), Ordering::SeqCst);
+/// # }
+///
+/// # #[cfg(not(feature = "derive"))]
+/// # fn main() {}
+/// ```
+///
+/// The trait can be automatically derived for two kinds of types:
+/// - `struct` types with only *one* field. That field's type has to implement
+///   `PrimitiveAtom` and is used as `Repr` type. Works with tuple structs or
+///   normal structs with named fields.
+/// - `enum` types that have a `#[repr(_)]` attribute specified and are C-like
+///   (i.e. no variant has any fields). The primitive type specified in the
+///   `#[repr(_)]` attribute is used as `Repr` type.
+///
+/// Example with enum:
+///
+/// ```
+/// use atomig::{Atom, Atomic, Ordering};
+/// # #[cfg(feature = "derive")]
+/// # fn main() {
+///
+/// #[derive(Atom)]
+/// #[repr(u8)]
+/// enum Animal { Dog, Cat, Fox }
+///
+/// let a = Atomic::new(Animal::Cat);
+/// a.store(Animal::Fox, Ordering::SeqCst);
+/// # }
+///
+/// # #[cfg(not(feature = "derive"))]
+/// # fn main() {}
 /// ```
 pub trait Atom {
     /// The atomic representation of this type.
@@ -172,6 +221,22 @@ pub trait Atom {
 ///   bit-wise on the `u8` which will result in very strange results (maybe
 ///   even in the value 3, which is not even valid). They will not use your
 ///   `std::ops` implementations!
+///
+///
+/// # Deriving this trait
+///
+/// Like [`Atom`], this trait can automatically derived if the 'derive' Cargo
+/// feature of this crate is enabled. This custom derive is simpler because
+/// this is only a marker trait.
+///
+/// *However*, this trait cannot be derived for enums, as this is almost
+/// certainly incorrect. While in C, enums basically list some constants and
+/// often, these constants are used in bitwise logical operations, this is
+/// often not valid in Rust. In Rust, a C-like enum can only have one of the
+/// values listed in the definition and nothing else. Otherwise, UB is
+/// triggered. Implementing this trait incorrectly does not cause UB, but the
+/// `unpack` method will panic for unexpected values. If you still think you
+/// want to implement this trait for your type, you have to do it manually.
 pub trait AtomLogic: Atom
 where
     Impl<Self>: AtomicLogicImpl
@@ -196,6 +261,22 @@ where
 ///   consider `f64`. It can be represented by `u64` and additions on `f64` do
 ///   make sense. *But* add adding the `u64` representations of two `f64` does
 ///   not yield any meaningful result!
+///
+///
+/// # Deriving this trait
+///
+/// Like [`Atom`], this trait can automatically derived if the 'derive' Cargo
+/// feature of this crate is enabled. This custom derive is simpler because
+/// this is only a marker trait.
+///
+/// *However*, this trait cannot be derived for enums, as this is almost
+/// certainly incorrect. While in C, enums basically list some constants and
+/// often, these constants are added or subtracted from one another, this is
+/// often not valid in Rust. In Rust, a C-like enum can only have one of the
+/// values listed in the definition and nothing else. Otherwise, UB is
+/// triggered. Implementing this trait incorrectly does not cause UB, but the
+/// `unpack` method will panic for unexpected values. If you still think you
+/// want to implement this trait for your type, you have to do it manually.
 pub trait AtomInteger: Atom
 where
     Impl<Self>: AtomicIntegerImpl,
