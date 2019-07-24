@@ -1,0 +1,26 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+
+script:
+  - cargo build --features="derive" || travis_terminate 1
+  - cargo test --features="derive" || travis_terminate 1
+  - cargo doc --features="derive" || travis_terminate 1
+
+env:
+  - RUSTFLAGS="--deny warnings"
+
+matrix:
+  include:
+    - name: "Check style"
+      language: generic
+      script: ./ci/check-basic-style.sh
+    - name: "Nightly with 'nightly' feature"
+      language: rust
+      rust: nightly
+      script:
+        - cargo build --features="derive nightly" || travis_terminate 1
+        - cargo test --features="derive nightly" || travis_terminate 1
+        - cargo doc --features="derive nightly" || travis_terminate 1
