@@ -85,6 +85,21 @@ pub trait AtomicLogicImpl: AtomicImpl {
 pub trait AtomicIntegerImpl: AtomicImpl {
     fn fetch_add(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
     fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+
+    #[cfg(feature = "nightly")]
+    fn fetch_max(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+    #[cfg(feature = "nightly")]
+    fn fetch_min(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+
+    #[cfg(feature = "nightly")]
+    fn fetch_update<F>(
+        &self,
+        f: F,
+        fetch_order: Ordering,
+        set_order: Ordering
+    ) -> Result<Self::Inner, Self::Inner>
+    where
+        F: FnMut(Self::Inner) -> Option<Self::Inner>;
 }
 
 
@@ -215,6 +230,35 @@ macro_rules! integer_pass_through_methods {
         #[inline(always)]
         fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
             self.fetch_sub(val, order)
+        }
+
+        /// This method is currently unstable and thus only available when
+        /// compiling this crate with the `"nightly"` feature.
+        #[cfg(feature = "nightly")]
+        fn fetch_max(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
+            self.fetch_max(val, order)
+        }
+
+        /// This method is currently unstable and thus only available when
+        /// compiling this crate with the `"nightly"` feature.
+        #[cfg(feature = "nightly")]
+        fn fetch_min(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
+            self.fetch_min(val, order)
+        }
+
+        /// This method is currently unstable and thus only available when
+        /// compiling this crate with the `"nightly"` feature.
+        #[cfg(feature = "nightly")]
+        fn fetch_update<F>(
+            &self,
+            f: F,
+            fetch_order: Ordering,
+            set_order: Ordering
+        ) -> Result<Self::Inner, Self::Inner>
+        where
+            F: FnMut(Self::Inner) -> Option<Self::Inner>
+        {
+            self.fetch_update(f, fetch_order, set_order)
         }
     };
 }

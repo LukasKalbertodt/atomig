@@ -1,4 +1,7 @@
 #![cfg_attr(feature = "nightly", feature(cfg_target_has_atomic))]
+#![cfg_attr(feature = "nightly", feature(no_more_cas))]
+#![cfg_attr(feature = "nightly", feature(atomic_min_max))]
+
 
 use std::fmt;
 use crate::impls::{PrimitiveAtom, AtomicImpl, AtomicLogicImpl, AtomicIntegerImpl};
@@ -228,6 +231,37 @@ where
     }
     pub fn fetch_sub(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_sub(val.pack(), order))
+    }
+
+    /// This method is currently unstable and thus only available when
+    /// compiling this crate with the `"nightly"` feature.
+    #[cfg(feature = "nightly")]
+    pub fn fetch_max(&self, val: T, order: Ordering) -> T {
+        T::unpack(self.0.fetch_max(val.pack(), order))
+    }
+    /// This method is currently unstable and thus only available when
+    /// compiling this crate with the `"nightly"` feature.
+    #[cfg(feature = "nightly")]
+    pub fn fetch_min(&self, val: T, order: Ordering) -> T {
+        T::unpack(self.0.fetch_min(val.pack(), order))
+    }
+
+    /// This method is currently unstable and thus only available when
+    /// compiling this crate with the `"nightly"` feature.
+    #[cfg(feature = "nightly")]
+    pub fn fetch_update<F>(
+        &self,
+        mut f: F,
+        fetch_order: Ordering,
+        set_order: Ordering
+    ) -> Result<T, T>
+    where
+        F: FnMut(T) -> Option<T>
+    {
+        let f = |repr| f(T::unpack(repr)).map(Atom::pack);
+        self.0.fetch_update(f, fetch_order, set_order)
+            .map(Atom::unpack)
+            .map_err(Atom::unpack)
     }
 }
 
