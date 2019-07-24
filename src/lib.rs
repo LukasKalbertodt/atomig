@@ -1,3 +1,69 @@
+//! Generic and convenient `std` atomics.
+//!
+//! This crate offers the generic [`Atomic<T>`][Atomic] type which can perform
+//! atomic operations on `T`. There is an important difference to C++'s
+//! `atomic` and the `Atomic` type from the `atomic` crate: **the
+//! `Atomic<T>` in this crate only works with types that actually support
+//! atomic operations on the target platform**. A lock-based fallback for other
+//! types is not used!
+//!
+//! This crate uses the atomic types from `std::sync::atomic` under the hood
+//! and actually does not contain any "interesting" runtime code itself. In
+//! other words: this is just a nicer API. Thanks to this, this crate does not
+//! use any `unsafe` code!
+//!
+//!
+//! # Quick example
+//!
+//! You can simply use `Atomic<T>` with all primitive types that support atomic
+//! operations on your platform:
+//!
+//! ```
+//! use atomig::{Atomic, Ordering};
+//!
+//! let a = Atomic::new(true);  // Atomic<bool>
+//! a.store(false, Ordering::SeqCst);
+//! ```
+//!
+//! The interface of [`Atomic`] very closely matches the interface of the
+//! atomic types in `std::sync::atomic` and you should be able to use this
+//! crate as a drop-in replacement. For more examples, see the `examples/`
+//! folder in the repository.
+//!
+//! As you can see in the example, `Ordering` (from `std::sync::atomic`) is
+//! reexported in this crate for your import convenience.
+//!
+//!
+//! # Traits
+//!
+//! This crate contains a number of traits to safely abstract over different
+//! atomic types. There are four rather "low level" traits (in the `impls`
+//! module) and three more "high level" ones.
+//!
+//! The most important one is probably [`Atom`]: to use a type `T` in
+//! `Atomic<T>`, is has to implement [`Atom`]. You can implement that trait for
+//! your own types as long as they can be represented by a type that implements
+//! [`impls::PrimitiveAtom`]. In many cases, you can also simply
+//! `#[derive(Atom)]` for your own types. See [`Atom`]'s documentation for more
+//! information.
+//!
+//!
+//! # Cargo features
+//!
+//! This crate has two Cargo features which are disabled by default:
+//! - **`derive`**: enables the custom derives for [`Atom`], [`AtomLogic`] and
+//!   [`AtomInteger`]. It is disabled by default because it requires compiling
+//!   a few dependencies for procedural macros.
+//! - **`nightly`**: only usable with a nightly compiler. Does two things:
+//!     - Adds unstable methods to this API, specifically `fetch_update`,
+//!       `fetch_max` and `fetch_min`.
+//!     - Uses the `cfg(target_has_atomic = "...")` feature to only compile the
+//!       parts of the library that are actually supported by the target
+//!       platform. Without this, this crate probably won't compile on
+//!       platforms that do not support all atomic features offered by
+//!       `std::sync::atomic`.
+//!
+
 #![cfg_attr(feature = "nightly", feature(cfg_target_has_atomic))]
 #![cfg_attr(feature = "nightly", feature(no_more_cas))]
 #![cfg_attr(feature = "nightly", feature(atomic_min_max))]
@@ -141,35 +207,180 @@ where
 // ===== The `Atomic<T>` type
 // ===============================================================================================
 
+/// The main type of this library: a generic atomic type.
+///
+/// Via the methods of this type you can perform various atomic operations. You
+/// can use any type `T` that implements [`Atom`]. This includes primitive
+/// atomics (the ones found in `std::sync::atomic`), other primitive types and
+/// potentially your own types. Additional methods are usable if `T` implements
+/// [`AtomLogic`] or [`AtomInteger`].
+///
+/// All methods use [`Atom::pack`] and [`Atom::unpack`] to convert between the
+/// underlying atomic value and the real value `T`. For types that implement
+/// [`PrimitiveAtom`][impls::PrimitiveAtom], these two methods are a simple ID
+/// function, meaning that there is no runtime overhead. Other types should
+/// make sure their `pack` and `unpack` operations are fast, as they are used a
+/// lot in this type.
+///
+/// The interface of this type very closely matches the interface of the atomic
+/// types in `std::sync::atomic`. The documentation was copied (and slightly
+/// adjusted) from there!
 pub struct Atomic<T: Atom>(Impl<T>);
 
 impl<T: Atom> Atomic<T> {
+    /// Creates a new atomic value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::Atomic;
+    ///
+    /// let x = Atomic::new(7u32);
+    /// ```
     pub fn new(v: T) -> Self {
         Self(Impl::<T>::new(v.pack()))
     }
 
-    // fn get_mut(&mut self) -> &mut Self::Inner;
-
+    /// Consumes the atomic and returns the contained value.
+    ///
+    /// This is safe because passing `self` by value guarantees that no other
+    /// threads are concurrently accessing the atomic data.
     pub fn into_inner(self) -> T {
         T::unpack(self.0.into_inner())
     }
+
+    /// Loads the value from the atomic.
+    ///
+    /// `load` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. Possible values are `SeqCst`, `Acquire` and
+    /// `Relaxed`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is `Release` or `AcqRel`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(5);
+    /// assert_eq!(x.load(Ordering::SeqCst), 5);
+    /// ```
     pub fn load(&self, order: Ordering) -> T {
         T::unpack(self.0.load(order))
     }
+
+    /// Stores a value into the atomic.
+    ///
+    /// `store` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. Possible values are `SeqCst`, `Release` and
+    /// `Relaxed`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is `Acquire` or `AcqRel`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(5);
+    ///
+    /// x.store(10, Ordering::SeqCst);
+    /// assert_eq!(x.load(Ordering::SeqCst), 10);
+    /// ```
     pub fn store(&self, v: T, order: Ordering) {
         self.0.store(v.pack(), order);
     }
 
+    /// Stores a value into the atomic, returning the previous value.
+    ///
+    /// `swap` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using `Acquire` makes the store part of this operation `Relaxed`, and
+    /// using `Release` makes the load part `Relaxed`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(5);
+    /// assert_eq!(x.swap(10, Ordering::SeqCst), 5);
+    /// ```
     #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn swap(&self, v: T, order: Ordering) -> T {
         T::unpack(self.0.swap(v.pack(), order))
     }
 
+    /// Stores a value into the atomic if the current value is the same as the
+    /// `current` value.
+    ///
+    /// The return value is always the previous value. If it is equal to
+    /// `current`, then the atomic was updated.
+    ///
+    /// `compare_and_swap` also takes an [`Ordering`] argument which describes
+    /// the memory ordering of this operation. Notice that even when using
+    /// `AcqRel`, the operation might fail and hence just perform an `Acquire`
+    /// load, but not have `Release` semantics. Using `Acquire` makes the store
+    /// part of this operation `Relaxed` if it happens, and using `Release`
+    /// makes the load part `Relaxed`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(5);
+    ///
+    /// assert_eq!(x.compare_and_swap(5, 10, Ordering::SeqCst), 5);
+    /// assert_eq!(x.load(Ordering::SeqCst), 10);
+    ///
+    /// assert_eq!(x.compare_and_swap(6, 12, Ordering::SeqCst), 10);
+    /// assert_eq!(x.load(Ordering::SeqCst), 10);
+    /// ```
     #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn compare_and_swap(&self, current: T, new: T, order: Ordering) -> T {
         T::unpack(self.0.compare_and_swap(current.pack(), new.pack(), order))
     }
 
+    /// Stores a value into the atomic if the current value is the same as the
+    /// `current` value.
+    ///
+    /// The return value is a result indicating whether the new value was
+    /// written and containing the previous value. On success this value is
+    /// guaranteed to be equal to `current`.
+    ///
+    /// `compare_exchange` takes two [`Ordering`] arguments to describe the
+    /// memory ordering of this operation. The first describes the required
+    /// ordering if the operation succeeds while the second describes the
+    /// required ordering when the operation fails. Using `Acquire` as success
+    /// ordering makes the store part of this operation `Relaxed`, and using
+    /// `Release` makes the successful load `Relaxed`. The failure ordering can
+    /// only be `SeqCst`, `Acquire` or `Relaxed` and must be equivalent to or
+    /// weaker than the success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(5);
+    ///
+    /// assert_eq!(
+    ///     x.compare_exchange(5, 10, Ordering::Acquire, Ordering::Relaxed),
+    ///     Ok(5),
+    /// );
+    /// assert_eq!(x.load(Ordering::Relaxed), 10);
+    ///
+    /// assert_eq!(
+    ///     x.compare_exchange(6, 12, Ordering::SeqCst, Ordering::Acquire),
+    ///     Err(10),
+    /// );
+    /// assert_eq!(x.load(Ordering::Relaxed), 10);
+    /// ```
     #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn compare_exchange(
         &self,
@@ -183,6 +394,39 @@ impl<T: Atom> Atomic<T> {
             .map_err(T::unpack)
     }
 
+    /// Stores a value into the atomic if the current value is the same as the
+    /// `current` value.
+    ///
+    /// Unlike `compare_exchange`, this function is allowed to spuriously fail
+    /// even when the comparison succeeds, which can result in more efficient
+    /// code on some platforms. The return value is a result indicating whether
+    /// the new value was written and containing the previous value.
+    ///
+    /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe
+    /// the memory ordering of this operation. The first describes the required
+    /// ordering if the operation succeeds while the second describes the
+    /// required ordering when the operation fails. Using `Acquire` as success
+    /// ordering makes the store part of this operation `Relaxed`, and using
+    /// `Release` makes the successful load `Relaxed`. The failure ordering can
+    /// only be `SeqCst`, `Acquire` or `Relaxed` and must be equivalent to or
+    /// weaker than the success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(4);
+    ///
+    /// let mut old = x.load(Ordering::Relaxed);
+    /// loop {
+    ///     let new = old * 2;
+    ///     match x.compare_exchange_weak(old, new, Ordering::SeqCst, Ordering::Relaxed) {
+    ///         Ok(_) => break,
+    ///         Err(x) => old = x,
+    ///     }
+    /// }
+    /// ```
     #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn compare_exchange_weak(
         &self,
@@ -204,15 +448,102 @@ impl<T: AtomLogic> Atomic<T>
 where
     Impl<T>: AtomicLogicImpl,
 {
+    /// Bitwise "and" with the current value.
+    ///
+    /// Performs a bitwise "and" operation on the current value and the
+    /// argument `val`, and sets the new value to the result.
+    ///
+    /// Returns the previous value.
+    ///
+    /// `fetch_and` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using `Acquire` makes the store part of this operation `Relaxed`, and
+    /// using `Release` makes the load part `Relaxed`.
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(0b101101);
+    /// assert_eq!(x.fetch_and(0b110011, Ordering::SeqCst), 0b101101);
+    /// assert_eq!(x.load(Ordering::SeqCst), 0b100001);
+    /// ```
     pub fn fetch_and(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_and(val.pack(), order))
     }
+
+    /// Bitwise "nand" with the current value.
+    ///
+    /// Performs a bitwise "nand" operation on the current value and the
+    /// argument `val`, and sets the new value to the result.
+    ///
+    /// Returns the previous value.
+    ///
+    /// `fetch_nand` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using `Acquire` makes the store part of this operation `Relaxed`, and
+    /// using `Release` makes the load part `Relaxed`.
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(0x13);
+    /// assert_eq!(x.fetch_nand(0x31, Ordering::SeqCst), 0x13);
+    /// assert_eq!(x.load(Ordering::SeqCst), !(0x13 & 0x31));
+    /// ```
     pub fn fetch_nand(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_nand(val.pack(), order))
     }
+
+    /// Bitwise "or" with the current value.
+    ///
+    /// Performs a bitwise "or" operation on the current value and the
+    /// argument `val`, and sets the new value to the result.
+    ///
+    /// Returns the previous value.
+    ///
+    /// `fetch_or` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using `Acquire` makes the store part of this operation `Relaxed`, and
+    /// using `Release` makes the load part `Relaxed`.
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(0b101101);
+    /// assert_eq!(x.fetch_or(0b110011, Ordering::SeqCst), 0b101101);
+    /// assert_eq!(x.load(Ordering::SeqCst), 0b111111);
+    /// ```
     pub fn fetch_or(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_or(val.pack(), order))
     }
+
+    /// Bitwise "xor" with the current value.
+    ///
+    /// Performs a bitwise "xor" operation on the current value and the
+    /// argument `val`, and sets the new value to the result.
+    ///
+    /// Returns the previous value.
+    ///
+    /// `fetch_xor` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using `Acquire` makes the store part of this operation `Relaxed`, and
+    /// using `Release` makes the load part `Relaxed`.
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(0b101101);
+    /// assert_eq!(x.fetch_xor(0b110011, Ordering::SeqCst), 0b101101);
+    /// assert_eq!(x.load(Ordering::SeqCst), 0b011110);
+    /// ```
     pub fn fetch_xor(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_xor(val.pack(), order))
     }
@@ -226,28 +557,169 @@ impl<T: AtomInteger> Atomic<T>
 where
     Impl<T>: AtomicIntegerImpl,
 {
+    /// Adds to the current value, returning the previous value.
+    ///
+    /// This operation wraps around on overflow.
+    ///
+    /// `fetch_add` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using `Acquire` makes the store part of this operation `Relaxed`, and
+    /// using `Release` makes the load part `Relaxed`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(0);
+    /// assert_eq!(x.fetch_add(10, Ordering::SeqCst), 0);
+    /// assert_eq!(x.load(Ordering::SeqCst), 10);
+    /// ```
     pub fn fetch_add(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_add(val.pack(), order))
     }
+
+    /// Subtracts from the current value, returning the previous value.
+    ///
+    /// This operation wraps around on overflow.
+    ///
+    /// `fetch_sub` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using `Acquire` makes the store part of this operation `Relaxed`, and
+    /// using `Release` makes the load part `Relaxed`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(20);
+    /// assert_eq!(x.fetch_sub(10, Ordering::SeqCst), 20);
+    /// assert_eq!(x.load(Ordering::SeqCst), 10);
+    /// ```
     pub fn fetch_sub(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_sub(val.pack(), order))
     }
 
-    /// This method is currently unstable and thus only available when
-    /// compiling this crate with the `"nightly"` feature.
+    /// Maximum with the current value.
+    ///
+    /// *This method is currently unstable and thus only available when
+    /// compiling this crate with the `"nightly"` feature.*
+    ///
+    /// Finds the maximum of the current value and the argument `val`, and sets
+    /// the new value to the result.
+    ///
+    /// Returns the previous value.
+    ///
+    /// `fetch_max` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using `Acquire` makes the store part of this operation `Relaxed`, and
+    /// using `Release` makes the load part `Relaxed`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let foo = Atomic::new(23);
+    /// assert_eq!(foo.fetch_max(42, Ordering::SeqCst), 23);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 42);
+    /// ```
+    ///
+    /// If you want to obtain the maximum value in one step, you can use the
+    /// following:
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let foo = Atomic::new(23);
+    /// let bar = 42;
+    /// let max_foo = foo.fetch_max(bar, Ordering::SeqCst).max(bar);
+    /// assert!(max_foo == 42);
+    /// ```
     #[cfg(feature = "nightly")]
     pub fn fetch_max(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_max(val.pack(), order))
     }
-    /// This method is currently unstable and thus only available when
-    /// compiling this crate with the `"nightly"` feature.
+
+    /// Minimum with the current value.
+    ///
+    /// *This method is currently unstable and thus only available when
+    /// compiling this crate with the `"nightly"` feature.*
+    ///
+    /// Finds the minimum of the current value and the argument `val`, and sets
+    /// the new value to the result.
+    ///
+    /// Returns the previous value.
+    ///
+    /// `fetch_min` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using `Acquire` makes the store part of this operation `Relaxed`, and
+    /// using `Release` makes the load part `Relaxed`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let foo = Atomic::new(23);
+    /// assert_eq!(foo.fetch_min(42, Ordering::Relaxed), 23);
+    /// assert_eq!(foo.load(Ordering::Relaxed), 23);
+    /// assert_eq!(foo.fetch_min(22, Ordering::Relaxed), 23);
+    /// assert_eq!(foo.load(Ordering::Relaxed), 22);
+    /// ```
+    ///
+    /// If you want to obtain the minimum value in one step, you can use the
+    /// following:
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let foo = Atomic::new(23);
+    /// let bar = 12;
+    /// let min_foo = foo.fetch_min(bar, Ordering::SeqCst).min(bar);
+    /// assert!(min_foo == 12);
+    /// ```
     #[cfg(feature = "nightly")]
     pub fn fetch_min(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_min(val.pack(), order))
     }
 
-    /// This method is currently unstable and thus only available when
-    /// compiling this crate with the `"nightly"` feature.
+    /// Fetches the value, and applies a function to it that returns an
+    /// optional new value. Returns a `Result` of `Ok(previous_value)` if the
+    /// function returned `Some(_)`, else `Err(previous_value)`.
+    ///
+    /// *This method is currently unstable and thus only available when
+    /// compiling this crate with the `"nightly"` feature.*
+    ///
+    /// Note: This may call the function multiple times if the value has been
+    /// changed from other threads in the meantime, as long as the function
+    /// returns `Some(_)`, but the function will have been applied but once to
+    /// the stored value.
+    ///
+    /// `fetch_update` takes two [`Ordering`] arguments to describe the memory
+    /// ordering of this operation. The first describes the required ordering
+    /// for loads and failed updates while the second describes the required
+    /// ordering when the operation finally succeeds. Beware that this is
+    /// different from the two modes in `compare_exchange`!
+    ///
+    /// Using `Acquire` as success ordering makes the store part of this
+    /// operation `Relaxed`, and using `Release` makes the final successful
+    /// load `Relaxed`. The (failed) load ordering can only be `SeqCst`,
+    /// `Acquire` or `Relaxed` and must be equivalent to or weaker than the
+    /// success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(7);
+    /// assert_eq!(x.fetch_update(|_| None, Ordering::SeqCst, Ordering::SeqCst), Err(7));
+    /// assert_eq!(x.fetch_update(|x| Some(x + 1), Ordering::SeqCst, Ordering::SeqCst), Ok(7));
+    /// assert_eq!(x.fetch_update(|x| Some(x + 1), Ordering::SeqCst, Ordering::SeqCst), Ok(8));
+    /// assert_eq!(x.load(Ordering::SeqCst), 9);
+    /// ```
     #[cfg(feature = "nightly")]
     pub fn fetch_update<F>(
         &self,
