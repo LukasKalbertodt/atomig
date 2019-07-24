@@ -348,3 +348,38 @@ impl_std_atomics!(i64, AtomicI64, true);
 impl_std_atomics!(usize, AtomicUsize, true);
 #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "ptr"))]
 impl_std_atomics!(isize, AtomicIsize, true);
+
+// ----- Implementations for non-atomic primitive types ------------------------------------------
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "32"))]
+impl Atom for f32 {
+    type Repr = u32;
+    fn pack(self) -> Self::Repr {
+        self.to_bits()
+    }
+    fn unpack(src: Self::Repr) -> Self {
+        Self::from_bits(src)
+    }
+}
+
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "64"))]
+impl Atom for f64 {
+    type Repr = u64;
+    fn pack(self) -> Self::Repr {
+        self.to_bits()
+    }
+    fn unpack(src: Self::Repr) -> Self {
+        Self::from_bits(src)
+    }
+}
+
+#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "32"))]
+impl Atom for char {
+    type Repr = u32;
+    fn pack(self) -> Self::Repr {
+        self.into()
+    }
+    fn unpack(src: Self::Repr) -> Self {
+        use std::convert::TryFrom;
+        Self::try_from(src).expect("invalid value in <char as Atom>::unpack")
+    }
+}

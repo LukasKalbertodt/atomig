@@ -104,18 +104,21 @@ macro_rules! gen_tests {
     (@default $ty:ty, false) => {};
 }
 
-//         mod     ty     val0    val1     logic int    default
-gen_tests!(_bool,  bool,  true,   false,   true, false, true);
-gen_tests!(_u8,    u8,    7u8,    33u8,    true, true,  true);
-gen_tests!(_i8,    i8,    7i8,    33i8,    true, true,  true);
-gen_tests!(_u16,   u16,   7u16,   33u16,   true, true,  true);
-gen_tests!(_i16,   i16,   7i16,   33i16,   true, true,  true);
-gen_tests!(_u32,   u32,   7u32,   33u32,   true, true,  true);
-gen_tests!(_i32,   i32,   7i32,   33i32,   true, true,  true);
-gen_tests!(_u64,   u64,   7u64,   33u64,   true, true,  true);
-gen_tests!(_i64,   i64,   7i64,   33i64,   true, true,  true);
-gen_tests!(_usize, usize, 7usize, 33usize, true, true,  true);
-gen_tests!(_isize, isize, 7isize, 33isize, true, true,  true);
+//         mod     ty     val0    val1     logic  int    default
+gen_tests!(_bool,  bool,  true,   false,   true,  false, true);
+gen_tests!(_u8,    u8,    7u8,    33u8,    true,  true,  true);
+gen_tests!(_i8,    i8,    7i8,    33i8,    true,  true,  true);
+gen_tests!(_u16,   u16,   7u16,   33u16,   true,  true,  true);
+gen_tests!(_i16,   i16,   7i16,   33i16,   true,  true,  true);
+gen_tests!(_u32,   u32,   7u32,   33u32,   true,  true,  true);
+gen_tests!(_i32,   i32,   7i32,   33i32,   true,  true,  true);
+gen_tests!(_u64,   u64,   7u64,   33u64,   true,  true,  true);
+gen_tests!(_i64,   i64,   7i64,   33i64,   true,  true,  true);
+gen_tests!(_usize, usize, 7usize, 33usize, true,  true,  true);
+gen_tests!(_isize, isize, 7isize, 33isize, true,  true,  true);
+gen_tests!(_f32,   f32,   7.0f32, 33.0f32, false, false, true);
+gen_tests!(_f64,   f64,   7.0f64, 33.0f64, false, false, true);
+gen_tests!(_char,  char,  'x',    '♥',     false, false, true);
 gen_tests!(_ptr, *mut String, 0 as *mut String, 0xBADC0DE as *mut String, false, false, false);
 gen_tests!(custom, super::Foo, super::Foo::Nothing, super::Foo::Set(0b101), false, false, true);
 

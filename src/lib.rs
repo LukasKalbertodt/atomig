@@ -15,8 +15,10 @@
 //!
 //! # Quick example
 //!
-//! You can simply use `Atomic<T>` with all primitive types that support atomic
-//! operations on your platform:
+//! You can simply use `Atomic<T>` with all types that implement [`Atom`] which
+//! are all types that support atomic operations on your platform, but also
+//! types that can be represented as the former kind of types (like `f32` and
+//! `char`).
 //!
 //! ```
 //! use atomig::{Atomic, Ordering};
@@ -91,9 +93,10 @@ pub use atomig_macro::{Atom, AtomInteger, AtomLogic};
 /// operations.
 ///
 /// This is trait is already implemented for all primitive types that support
-/// atomic operations. But in addition to this, you can implement this trait
-/// for your own types as long as they can be represented as one such primitive
-/// type.
+/// atomic operations. It is also implemented for `f32`, `f64` and `char` as
+/// all of those can be represented by a primitive atomic type. In addition to
+/// this, you can implement this trait for your own types as long as they can
+/// be represented as one such primitive type.
 ///
 /// The `pack` and `unpack` methods define the conversion to and from the
 /// atomic representation. The methods should be fairly fast, because they are
@@ -302,6 +305,14 @@ where
 /// function, meaning that there is no runtime overhead. Other types should
 /// make sure their `pack` and `unpack` operations are fast, as they are used a
 /// lot in this type.
+///
+/// For all methods that do a comparison (e.g. `compare_and_swap`), keep in
+/// mind that the comparison is performed on the bits of the underlying type
+/// which can sometimes lead to unexpected behavior. For example, for floats,
+/// there are many bit patterns that represent NaN. So the atomic might indeed
+/// store a NaN representation at a moment, but `compare_and_swap` called with
+/// `current = NaN` might not swap, because both NaN differ in the bit
+/// representation.
 ///
 /// The interface of this type very closely matches the interface of the atomic
 /// types in `std::sync::atomic`. The documentation was copied (and slightly
