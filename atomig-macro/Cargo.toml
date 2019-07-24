@@ -4,6 +4,13 @@ version = "0.1.0"
 authors = ["Lukas Kalbertodt <lukas.kalbertodt@gmail.com>"]
 edition = "2018"
 
+description = """
+Defines procedural macros for the crate `atomig`. Please see the main crate.
+"""
+repository = "https://github.com/LukasKalbertodt/atomig/"
+license = "MIT/Apache-2.0"
+
+
 [lib]
 proc-macro = true
 
