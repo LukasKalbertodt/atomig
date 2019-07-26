@@ -849,17 +849,18 @@ impl<T: Atom> From<T> for Atomic<T> {
     }
 }
 
-#[cfg(feature="serde")]
+#[cfg(feature = "serde")]
 impl<T: Atom + serde::Serialize> serde::Serialize for Atomic<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: serde::Serializer,
+    where
+        S: serde::Serializer,
     {
         self.load(Ordering::SeqCst).serialize(serializer)
     }
 }
 
 
-#[cfg(feature="serde")]
+#[cfg(feature = "serde")]
 impl<'de, T: Atom + serde::Deserialize<'de>> serde::Deserialize<'de> for Atomic<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
