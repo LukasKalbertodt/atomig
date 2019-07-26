@@ -52,10 +52,12 @@
 //!
 //! # Cargo features
 //!
-//! This crate has two Cargo features which are disabled by default:
+//! This crate has three Cargo features which are disabled by default:
 //! - **`derive`**: enables the custom derives for [`Atom`], [`AtomLogic`] and
 //!   [`AtomInteger`]. It is disabled by default because it requires compiling
 //!   a few dependencies for procedural macros.
+//! - **`serde`**: enables the serde [`Serialize`] and [`Deserialize`] traits
+//!   on `Atomic<T>` if `T` is serializable or deserializable.
 //! - **`nightly`**: only usable with a nightly compiler. Does two things:
 //!     - Adds unstable methods to this API, specifically `fetch_update`,
 //!       `fetch_max` and `fetch_min`.
@@ -844,6 +846,27 @@ impl<T: Atom + Default> Default for Atomic<T> {
 impl<T: Atom> From<T> for Atomic<T> {
     fn from(v: T) -> Self {
         Self::new(v)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<T: Atom + serde::Serialize> serde::Serialize for Atomic<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.load(Ordering::SeqCst).serialize(serializer)
+    }
+}
+
+
+#[cfg(feature = "serde")]
+impl<'de, T: Atom + serde::Deserialize<'de>> serde::Deserialize<'de> for Atomic<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        serde::Deserialize::deserialize(deserializer).map(Self::new)
     }
 }
 

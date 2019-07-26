@@ -5,9 +5,9 @@ rust:
   - nightly
 
 script:
-  - cargo build --features="derive" || travis_terminate 1
-  - cargo test --features="derive" || travis_terminate 1
-  - cargo doc --features="derive" || travis_terminate 1
+  - cargo build --features="derive serde" || travis_terminate 1
+  - cargo test --features="derive serde" || travis_terminate 1
+  - cargo doc --features="derive serde" || travis_terminate 1
 
 env:
   - RUSTFLAGS="--deny warnings"
@@ -21,6 +21,6 @@ matrix:
       language: rust
       rust: nightly
       script:
-        - cargo build --features="derive nightly" || travis_terminate 1
-        - cargo test --features="derive nightly" || travis_terminate 1
-        - cargo doc --features="derive nightly" || travis_terminate 1
+        - cargo build --features="derive serde nightly" || travis_terminate 1
+        - cargo test --features="derive serde nightly" || travis_terminate 1
+        - cargo doc --features="derive serde nightly" || travis_terminate 1

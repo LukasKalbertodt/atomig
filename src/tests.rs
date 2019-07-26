@@ -3,7 +3,10 @@ use super::Atom;
 macro_rules! gen_tests {
     (
         $mod_name:ident, $ty:ty, $val0:expr, $val1:expr,
-        $with_logic:ident, $with_int:ident, $with_default:ident
+        [
+            $with_logic:ident $with_int:ident
+            $with_default:ident $with_serde:ident
+        ]
     ) => {
         mod $mod_name {
             use crate::{Atomic, Ordering};
@@ -43,6 +46,7 @@ macro_rules! gen_tests {
 
             gen_tests!(@default $ty, $with_default);
 
+            gen_tests!(@serde $val0, $ty, $with_serde);
 
             #[test]
             fn fmt_debug() {
@@ -58,7 +62,7 @@ macro_rules! gen_tests {
             }
         }
     };
-    (@logic $val0:expr, $val1:expr, true) => {
+    (@logic $val0:expr, $val1:expr, y) => {
         #[test]
         fn logic() {
             let a = Atomic::new($val0);
@@ -78,9 +82,9 @@ macro_rules! gen_tests {
             assert_eq!(a.load(Ordering::SeqCst), $val0 ^ $val1);
         }
     };
-    (@logic $val0:expr, $val1:expr, false) => {};
+    (@logic $val0:expr, $val1:expr, n) => {};
 
-    (@integer $val0:expr, $val1:expr, true) => {
+    (@integer $val0:expr, $val1:expr, y) => {
         #[test]
         fn integer() {
             let a = Atomic::new($val0);
@@ -92,35 +96,51 @@ macro_rules! gen_tests {
             assert_eq!(a.load(Ordering::SeqCst), $val0.wrapping_sub($val1));
         }
     };
-    (@integer $val0:expr, $val1:expr, false) => {};
+    (@integer $val0:expr, $val1:expr, n) => {};
 
-    (@default $ty:ty, true) => {
+    (@default $ty:ty, y) => {
         #[test]
         fn default() {
             let a: Atomic<$ty> = Default::default();
             assert_eq!(a.load(Ordering::SeqCst), <$ty>::default());
         }
     };
-    (@default $ty:ty, false) => {};
+    (@default $ty:ty, n) => {};
+
+    (@serde $val0:expr, $ty:ty, y) => {
+        #[cfg(feature = "serde")]
+        use bincode;
+
+        #[cfg(feature = "serde")]
+        #[test]
+        fn test_serde_round_trip() {
+            let src = Atomic::new($val0);
+            let serialized = bincode::serialize(&src).unwrap();
+            let deserialized: Atomic<$ty> = bincode::deserialize(&serialized).unwrap();
+            assert_eq!(src.load(Ordering::SeqCst), deserialized.load(Ordering::SeqCst));
+        }
+    };
+
+    (@serde $val0:expr, $ty:ty, n) => {};
 }
 
-//         mod     ty     val0    val1     logic  int    default
-gen_tests!(_bool,  bool,  true,   false,   true,  false, true);
-gen_tests!(_u8,    u8,    7u8,    33u8,    true,  true,  true);
-gen_tests!(_i8,    i8,    7i8,    33i8,    true,  true,  true);
-gen_tests!(_u16,   u16,   7u16,   33u16,   true,  true,  true);
-gen_tests!(_i16,   i16,   7i16,   33i16,   true,  true,  true);
-gen_tests!(_u32,   u32,   7u32,   33u32,   true,  true,  true);
-gen_tests!(_i32,   i32,   7i32,   33i32,   true,  true,  true);
-gen_tests!(_u64,   u64,   7u64,   33u64,   true,  true,  true);
-gen_tests!(_i64,   i64,   7i64,   33i64,   true,  true,  true);
-gen_tests!(_usize, usize, 7usize, 33usize, true,  true,  true);
-gen_tests!(_isize, isize, 7isize, 33isize, true,  true,  true);
-gen_tests!(_f32,   f32,   7.0f32, 33.0f32, false, false, true);
-gen_tests!(_f64,   f64,   7.0f64, 33.0f64, false, false, true);
-gen_tests!(_char,  char,  'x',    '♥',     false, false, true);
-gen_tests!(_ptr, *mut String, 0 as *mut String, 0xBADC0DE as *mut String, false, false, false);
-gen_tests!(custom, super::Foo, super::Foo::Nothing, super::Foo::Set(0b101), false, false, true);
+//         mod     ty     val0    val1     [logic int default serde]
+gen_tests!(_bool,  bool,  true,   false,   [y n y y]);
+gen_tests!(_u8,    u8,    7u8,    33u8,    [y y y y]);
+gen_tests!(_i8,    i8,    7i8,    33i8,    [y y y y]);
+gen_tests!(_u16,   u16,   7u16,   33u16,   [y y y y]);
+gen_tests!(_i16,   i16,   7i16,   33i16,   [y y y y]);
+gen_tests!(_u32,   u32,   7u32,   33u32,   [y y y y]);
+gen_tests!(_i32,   i32,   7i32,   33i32,   [y y y y]);
+gen_tests!(_u64,   u64,   7u64,   33u64,   [y y y y]);
+gen_tests!(_i64,   i64,   7i64,   33i64,   [y y y y]);
+gen_tests!(_usize, usize, 7usize, 33usize, [y y y y]);
+gen_tests!(_isize, isize, 7isize, 33isize, [y y y y]);
+gen_tests!(_f32,   f32,   7.0f32, 33.0f32, [n n y y]);
+gen_tests!(_f64,   f64,   7.0f64, 33.0f64, [n n y y]);
+gen_tests!(_char,  char,  'x',    '♥',     [n n y y]);
+gen_tests!(_ptr, *mut String, 0 as *mut String, 0xBADC0DE as *mut String,   [n n n n]);
+gen_tests!(custom, super::Foo, super::Foo::Nothing, super::Foo::Set(0b101), [n n y n]);
 
 
 #[derive(Debug, PartialEq, Eq)]
