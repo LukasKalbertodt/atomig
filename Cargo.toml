@@ -22,7 +22,6 @@ travis-ci = { repository = "LukasKalbertodt/atomig" }
 
 [features]
 derive = ["atomig-macro"]
-nightly = []
 
 [dependencies]
 atomig-macro = { version = "0.1.0", path = "atomig-macro", optional = true }

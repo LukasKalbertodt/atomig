@@ -52,26 +52,13 @@
 //!
 //! # Cargo features
 //!
-//! This crate has three Cargo features which are disabled by default:
+//! This crate has some Cargo features which are disabled by default:
 //! - **`derive`**: enables the custom derives for [`Atom`], [`AtomLogic`] and
 //!   [`AtomInteger`]. It is disabled by default because it requires compiling
 //!   a few dependencies for procedural macros.
 //! - **`serde`**: enables the serde [`Serialize`] and [`Deserialize`] traits
 //!   on `Atomic<T>` if `T` is serializable or deserializable.
-//! - **`nightly`**: only usable with a nightly compiler. Does two things:
-//!     - Adds unstable methods to this API, specifically `fetch_update`,
-//!       `fetch_max` and `fetch_min`.
-//!     - Uses the `cfg(target_has_atomic = "...")` feature to only compile the
-//!       parts of the library that are actually supported by the target
-//!       platform. Without this, this crate probably won't compile on
-//!       platforms that do not support all atomic features offered by
-//!       `std::sync::atomic`.
 //!
-
-#![cfg_attr(feature = "nightly", feature(cfg_target_has_atomic))]
-#![cfg_attr(feature = "nightly", feature(no_more_cas))]
-#![cfg_attr(feature = "nightly", feature(atomic_min_max))]
-
 
 use std::fmt;
 use crate::impls::{PrimitiveAtom, AtomicImpl, AtomicLogicImpl, AtomicIntegerImpl};
@@ -404,7 +391,6 @@ impl<T: Atom> Atomic<T> {
     /// let x = Atomic::new(5);
     /// assert_eq!(x.swap(10, Ordering::SeqCst), 5);
     /// ```
-    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn swap(&self, v: T, order: Ordering) -> T {
         T::unpack(self.0.swap(v.pack(), order))
     }
@@ -435,7 +421,6 @@ impl<T: Atom> Atomic<T> {
     /// assert_eq!(x.compare_and_swap(6, 12, Ordering::SeqCst), 10);
     /// assert_eq!(x.load(Ordering::SeqCst), 10);
     /// ```
-    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn compare_and_swap(&self, current: T, new: T, order: Ordering) -> T {
         T::unpack(self.0.compare_and_swap(current.pack(), new.pack(), order))
     }
@@ -475,7 +460,6 @@ impl<T: Atom> Atomic<T> {
     /// );
     /// assert_eq!(x.load(Ordering::Relaxed), 10);
     /// ```
-    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn compare_exchange(
         &self,
         current: T,
@@ -521,7 +505,6 @@ impl<T: Atom> Atomic<T> {
     ///     }
     /// }
     /// ```
-    #[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
     pub fn compare_exchange_weak(
         &self,
         current: T,
@@ -537,7 +520,6 @@ impl<T: Atom> Atomic<T> {
 
 // TODO: the `where` bound should not be necessary as the `AtomLogic` trait
 // already specifies this. Maybe we can fix this in the future.
-#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
 impl<T: AtomLogic> Atomic<T>
 where
     Impl<T>: AtomicLogicImpl,
@@ -646,7 +628,6 @@ where
 
 // TODO: the `where` bound should not be necessary as the `AtomInteger` trait
 // already specifies this. Maybe we can fix this in the future.
-#[cfg_attr(feature = "nightly", cfg(target_has_atomic = "cas"))]
 impl<T: AtomInteger> Atomic<T>
 where
     Impl<T>: AtomicIntegerImpl,
