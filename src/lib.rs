@@ -697,9 +697,6 @@ where
 
     /// Maximum with the current value.
     ///
-    /// *This method is currently unstable and thus only available when
-    /// compiling this crate with the `"nightly"` feature.*
-    ///
     /// Finds the maximum of the current value and the argument `val`, and sets
     /// the new value to the result.
     ///
@@ -731,15 +728,11 @@ where
     /// let max_foo = foo.fetch_max(bar, Ordering::SeqCst).max(bar);
     /// assert!(max_foo == 42);
     /// ```
-    #[cfg(feature = "nightly")]
     pub fn fetch_max(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_max(val.pack(), order))
     }
 
     /// Minimum with the current value.
-    ///
-    /// *This method is currently unstable and thus only available when
-    /// compiling this crate with the `"nightly"` feature.*
     ///
     /// Finds the minimum of the current value and the argument `val`, and sets
     /// the new value to the result.
@@ -774,7 +767,6 @@ where
     /// let min_foo = foo.fetch_min(bar, Ordering::SeqCst).min(bar);
     /// assert!(min_foo == 12);
     /// ```
-    #[cfg(feature = "nightly")]
     pub fn fetch_min(&self, val: T, order: Ordering) -> T {
         T::unpack(self.0.fetch_min(val.pack(), order))
     }
@@ -782,9 +774,6 @@ where
     /// Fetches the value, and applies a function to it that returns an
     /// optional new value. Returns a `Result` of `Ok(previous_value)` if the
     /// function returned `Some(_)`, else `Err(previous_value)`.
-    ///
-    /// *This method is currently unstable and thus only available when
-    /// compiling this crate with the `"nightly"` feature.*
     ///
     /// Note: This may call the function multiple times if the value has been
     /// changed from other threads in the meantime, as long as the function
@@ -809,23 +798,22 @@ where
     /// use atomig::{Atomic, Ordering};
     ///
     /// let x = Atomic::new(7);
-    /// assert_eq!(x.fetch_update(|_| None, Ordering::SeqCst, Ordering::SeqCst), Err(7));
-    /// assert_eq!(x.fetch_update(|x| Some(x + 1), Ordering::SeqCst, Ordering::SeqCst), Ok(7));
-    /// assert_eq!(x.fetch_update(|x| Some(x + 1), Ordering::SeqCst, Ordering::SeqCst), Ok(8));
+    /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(7));
+    /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(7));
+    /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(8));
     /// assert_eq!(x.load(Ordering::SeqCst), 9);
     /// ```
-    #[cfg(feature = "nightly")]
     pub fn fetch_update<F>(
         &self,
-        mut f: F,
+        set_order: Ordering,
         fetch_order: Ordering,
-        set_order: Ordering
+        mut f: F,
     ) -> Result<T, T>
     where
         F: FnMut(T) -> Option<T>
     {
         let f = |repr| f(T::unpack(repr)).map(Atom::pack);
-        self.0.fetch_update(f, fetch_order, set_order)
+        self.0.fetch_update(set_order, fetch_order, f)
             .map(Atom::unpack)
             .map_err(Atom::unpack)
     }
