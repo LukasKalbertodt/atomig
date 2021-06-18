@@ -23,74 +23,65 @@ mod sealed {
 /// your own types; see [`Atom`] instead.
 pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
     /// The standard library type that is the atomic version of `Self`.
-    type Impl: AtomicImpl<Inner = Self>;
-}
+    type Impl;
 
-/// Common interface of all atomic types in `std::sync::atomic`.
-///
-/// This trait is exactly implemented for all atomic types in
-/// `std::sync::atomic` and you cannot and should not implement this trait for
-/// your own types. Instead of using these methods directly, use
-/// [`Atomic`][super::Atomic] which has the same interface.
-pub trait AtomicImpl: Sized + sealed::Sealed {
-    type Inner: PrimitiveAtom<Impl = Self>;
+    fn into_impl(self) -> Self::Impl;
+    fn from_impl(imp: Self::Impl) -> Self;
 
-    fn new(v: Self::Inner) -> Self;
-    fn get_mut(&mut self) -> &mut Self::Inner;
-    fn into_inner(self) -> Self::Inner;
-    fn load(&self, order: Ordering) -> Self::Inner;
-    fn store(&self, v: Self::Inner, order: Ordering);
+    fn get_mut(imp: &mut Self::Impl) -> &mut Self;
+    fn load(imp: &Self::Impl, order: Ordering) -> Self;
+    fn store(imp: &Self::Impl, v: Self, order: Ordering);
 
-    fn swap(&self, v: Self::Inner, order: Ordering) -> Self::Inner;
+    fn swap(imp: &Self::Impl, v: Self, order: Ordering) -> Self;
 
     fn compare_and_swap(
-        &self,
-        current: Self::Inner,
-        new: Self::Inner,
+        imp: &Self::Impl,
+        current: Self,
+        new: Self,
         order: Ordering,
-    ) -> Self::Inner;
+    ) -> Self;
 
     fn compare_exchange(
-        &self,
-        current: Self::Inner,
-        new: Self::Inner,
+        imp: &Self::Impl,
+        current: Self,
+        new: Self,
         success: Ordering,
         failure: Ordering,
-    ) -> Result<Self::Inner, Self::Inner>;
+    ) -> Result<Self, Self>;
 
     fn compare_exchange_weak(
-        &self,
-        current: Self::Inner,
-        new: Self::Inner,
+        imp: &Self::Impl,
+        current: Self,
+        new: Self,
         success: Ordering,
         failure: Ordering,
-    ) -> Result<Self::Inner, Self::Inner>;
+    ) -> Result<Self, Self>;
 }
 
 /// Atomic types from `std::sync::atomic` which support logical operations.
-pub trait AtomicLogicImpl: AtomicImpl {
-    fn fetch_and(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
-    fn fetch_nand(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
-    fn fetch_or(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
-    fn fetch_xor(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+pub trait PrimitiveAtomLogic: PrimitiveAtom {
+    fn fetch_and(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
+    fn fetch_nand(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
+    fn fetch_or(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
+    fn fetch_xor(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
 }
 
 /// Atomic types from `std::sync::atomic` which support integer operations.
-pub trait AtomicIntegerImpl: AtomicImpl {
-    fn fetch_add(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
-    fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+pub trait PrimitiveAtomInteger: PrimitiveAtom {
+    fn fetch_add(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
+    fn fetch_sub(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
 
-    fn fetch_max(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
-    fn fetch_min(&self, val: Self::Inner, order: Ordering) -> Self::Inner;
+    fn fetch_max(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
+    fn fetch_min(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
 
     fn fetch_update<F>(
-        &self,
+        imp: &Self::Impl,
         set_order: Ordering,
         fetch_order: Ordering,
         f: F,
-    ) -> Result<Self::Inner, Self::Inner>
+    ) -> Result<Self, Self>
     where
-        F: FnMut(Self::Inner) -> Option<Self::Inner>;
+        F: FnMut(Self) -> Option<Self>;
 }
 
 
@@ -116,65 +107,69 @@ macro_rules! id_pack_unpack {
 macro_rules! pass_through_methods {
     ($ty:ty) => {
         #[inline(always)]
-        fn new(v: Self::Inner) -> Self {
-            <$ty>::new(v)
+        fn into_impl(self) -> Self::Impl {
+            <$ty>::new(self)
         }
 
         #[inline(always)]
-        fn get_mut(&mut self) -> &mut Self::Inner {
-            self.get_mut()
+        fn from_impl(imp: Self::Impl) -> Self {
+            imp.into_inner()
         }
 
         #[inline(always)]
-        fn into_inner(self) -> Self::Inner {
-            self.into_inner()
+        fn get_mut(imp: &mut Self::Impl) -> &mut Self {
+            imp.get_mut()
         }
 
         #[inline(always)]
-        fn load(&self, order: Ordering) -> Self::Inner {
-            self.load(order)
+        fn load(imp: &Self::Impl, order: Ordering) -> Self {
+            imp.load(order)
         }
 
         #[inline(always)]
-        fn store(&self, v: Self::Inner, order: Ordering) {
-            self.store(v, order)
+        fn store(imp: &Self::Impl, v: Self, order: Ordering) {
+            imp.store(v, order)
         }
 
+
         #[inline(always)]
-        fn swap(&self, v: Self::Inner, order: Ordering) -> Self::Inner {
-            self.swap(v, order)
+        fn swap(imp: &Self::Impl, v: Self, order: Ordering) -> Self {
+            imp.swap(v, order)
         }
+
 
         #[inline(always)]
         fn compare_and_swap(
-            &self,
-            current: Self::Inner,
-            new: Self::Inner,
+            imp: &Self::Impl,
+            current: Self,
+            new: Self,
             order: Ordering,
-        ) -> Self::Inner {
-            self.compare_and_swap(current, new, order)
+        ) -> Self {
+            imp.compare_and_swap(current, new, order)
         }
+
 
         #[inline(always)]
         fn compare_exchange(
-            &self,
-            current: Self::Inner,
-            new: Self::Inner,
+            imp: &Self::Impl,
+            current: Self,
+            new: Self,
             success: Ordering,
             failure: Ordering,
-        ) -> Result<Self::Inner, Self::Inner> {
-            self.compare_exchange(current, new, success, failure)
+        ) -> Result<Self, Self> {
+            imp.compare_exchange(current, new, success, failure)
         }
+
 
         #[inline(always)]
         fn compare_exchange_weak(
-            &self,
-            current: Self::Inner,
-            new: Self::Inner,
+            imp: &Self::Impl,
+            current: Self,
+            new: Self,
             success: Ordering,
             failure: Ordering,
-        ) -> Result<Self::Inner, Self::Inner> {
-            self.compare_exchange_weak(current, new, success, failure)
+        ) -> Result<Self, Self> {
+            imp.compare_exchange_weak(current, new, success, failure)
         }
     };
 }
@@ -184,23 +179,23 @@ macro_rules! pass_through_methods {
 macro_rules! logical_pass_through_methods {
     () => {
         #[inline(always)]
-        fn fetch_and(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
-            self.fetch_and(val, order)
+        fn fetch_and(imp: &Self::Impl, val: Self, order: Ordering) -> Self {
+            imp.fetch_and(val, order)
         }
 
         #[inline(always)]
-        fn fetch_nand(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
-            self.fetch_nand(val, order)
+        fn fetch_nand(imp: &Self::Impl, val: Self, order: Ordering) -> Self {
+            imp.fetch_nand(val, order)
         }
 
         #[inline(always)]
-        fn fetch_or(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
-            self.fetch_or(val, order)
+        fn fetch_or(imp: &Self::Impl, val: Self, order: Ordering) -> Self {
+            imp.fetch_or(val, order)
         }
 
         #[inline(always)]
-        fn fetch_xor(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
-            self.fetch_xor(val, order)
+        fn fetch_xor(imp: &Self::Impl, val: Self, order: Ordering) -> Self {
+            imp.fetch_xor(val, order)
         }
     };
 }
@@ -210,33 +205,33 @@ macro_rules! logical_pass_through_methods {
 macro_rules! integer_pass_through_methods {
     () => {
         #[inline(always)]
-        fn fetch_add(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
-            self.fetch_add(val, order)
+        fn fetch_add(imp: &Self::Impl, val: Self, order: Ordering) -> Self {
+            imp.fetch_add(val, order)
         }
 
         #[inline(always)]
-        fn fetch_sub(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
-            self.fetch_sub(val, order)
+        fn fetch_sub(imp: &Self::Impl, val: Self, order: Ordering) -> Self {
+            imp.fetch_sub(val, order)
         }
 
-        fn fetch_max(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
-            self.fetch_max(val, order)
+        fn fetch_max(imp: &Self::Impl, val: Self, order: Ordering) -> Self {
+            imp.fetch_max(val, order)
         }
 
-        fn fetch_min(&self, val: Self::Inner, order: Ordering) -> Self::Inner {
-            self.fetch_min(val, order)
+        fn fetch_min(imp: &Self::Impl, val: Self, order: Ordering) -> Self {
+            imp.fetch_min(val, order)
         }
 
         fn fetch_update<F>(
-            &self,
+            imp: &Self::Impl,
             set_order: Ordering,
             fetch_order: Ordering,
             f: F,
-        ) -> Result<Self::Inner, Self::Inner>
+        ) -> Result<Self, Self>
         where
-            F: FnMut(Self::Inner) -> Option<Self::Inner>
+            F: FnMut(Self) -> Option<Self>
         {
-            self.fetch_update(set_order, fetch_order, f)
+            imp.fetch_update(set_order, fetch_order, f)
         }
     };
 }
@@ -250,13 +245,9 @@ impl<T> Atom for *mut T {
 impl<T> sealed::Sealed for *mut T {}
 impl<T> PrimitiveAtom for *mut T {
     type Impl = atomic::AtomicPtr<T>;
-}
-
-impl<T> sealed::Sealed for atomic::AtomicPtr<T> {}
-impl<T> AtomicImpl for atomic::AtomicPtr<T> {
-    type Inner = *mut T;
     pass_through_methods!(atomic::AtomicPtr<T>);
 }
+
 
 
 // ----- Integers and `bool` -----
@@ -269,19 +260,13 @@ macro_rules! impl_std_atomics {
         }
 
         impl sealed::Sealed for $ty {}
+        impl AtomLogic for $ty {}
         impl PrimitiveAtom for $ty {
             type Impl = atomic::$impl_ty;
-        }
-
-        impl AtomLogic for $ty {}
-
-        impl sealed::Sealed for atomic::$impl_ty {}
-        impl AtomicImpl for atomic::$impl_ty {
-            type Inner = $ty;
             pass_through_methods!(atomic::$impl_ty);
         }
 
-        impl AtomicLogicImpl for atomic::$impl_ty {
+        impl PrimitiveAtomLogic for $ty {
             logical_pass_through_methods!();
         }
 
@@ -289,8 +274,7 @@ macro_rules! impl_std_atomics {
     };
     (@int_methods $ty:ty, $impl_ty:ident, true) => {
         impl AtomInteger for $ty {}
-
-        impl AtomicIntegerImpl for atomic::$impl_ty {
+        impl PrimitiveAtomInteger for $ty {
             integer_pass_through_methods!();
         }
     };

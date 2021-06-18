@@ -61,7 +61,7 @@
 //!
 
 use std::fmt;
-use crate::impls::{PrimitiveAtom, AtomicImpl, AtomicLogicImpl, AtomicIntegerImpl};
+use crate::impls::{PrimitiveAtom, PrimitiveAtomLogic, PrimitiveAtomInteger};
 
 pub mod impls;
 #[cfg(test)]
@@ -187,7 +187,8 @@ pub trait Atom {
     /// If your type also implements `AtomLogic` or `AtomInteger`, results of
     /// those operations might get passed to `unpack`. Furthermore, this method
     /// can be called by anyone. So at the very least, you have to make sure
-    /// that invalid input values do not lead to memory unsafety!
+    /// that invalid input values do not lead to undefined behavior(e.g. memory
+    /// unsafety)!
     fn unpack(src: Self::Repr) -> Self;
 }
 
@@ -231,7 +232,7 @@ pub trait Atom {
 /// want to implement this trait for your type, you have to do it manually.
 pub trait AtomLogic: Atom
 where
-    Impl<Self>: AtomicLogicImpl
+    Self::Repr: PrimitiveAtomLogic,
 {}
 
 /// `Atom`s for which integer operations on their atomic representation make
@@ -271,7 +272,7 @@ where
 /// want to implement this trait for your type, you have to do it manually.
 pub trait AtomInteger: Atom
 where
-    Impl<Self>: AtomicIntegerImpl,
+    Self::Repr: PrimitiveAtomInteger,
 {}
 
 
@@ -305,8 +306,8 @@ where
 ///
 /// The interface of this type very closely matches the interface of the atomic
 /// types in `std::sync::atomic`. The documentation was copied (and slightly
-/// adjusted) from there!
-pub struct Atomic<T: Atom>(Impl<T>);
+/// adjusted) from there.
+pub struct Atomic<T: Atom>(<<T as Atom>::Repr as PrimitiveAtom>::Impl);
 
 impl<T: Atom> Atomic<T> {
     /// Creates a new atomic value.
@@ -319,7 +320,7 @@ impl<T: Atom> Atomic<T> {
     /// let x = Atomic::new(7u32);
     /// ```
     pub fn new(v: T) -> Self {
-        Self(Impl::<T>::new(v.pack()))
+        Self(T::Repr::into_impl(v.pack()))
     }
 
     /// Consumes the atomic and returns the contained value.
@@ -327,7 +328,7 @@ impl<T: Atom> Atomic<T> {
     /// This is safe because passing `self` by value guarantees that no other
     /// threads are concurrently accessing the atomic data.
     pub fn into_inner(self) -> T {
-        T::unpack(self.0.into_inner())
+        T::unpack(T::Repr::from_impl(self.0))
     }
 
     /// Loads the value from the atomic.
@@ -349,7 +350,7 @@ impl<T: Atom> Atomic<T> {
     /// assert_eq!(x.load(Ordering::SeqCst), 5);
     /// ```
     pub fn load(&self, order: Ordering) -> T {
-        T::unpack(self.0.load(order))
+        T::unpack(T::Repr::load(&self.0, order))
     }
 
     /// Stores a value into the atomic.
@@ -373,7 +374,7 @@ impl<T: Atom> Atomic<T> {
     /// assert_eq!(x.load(Ordering::SeqCst), 10);
     /// ```
     pub fn store(&self, v: T, order: Ordering) {
-        self.0.store(v.pack(), order);
+        T::Repr::store(&self.0, v.pack(), order);
     }
 
     /// Stores a value into the atomic, returning the previous value.
@@ -392,7 +393,7 @@ impl<T: Atom> Atomic<T> {
     /// assert_eq!(x.swap(10, Ordering::SeqCst), 5);
     /// ```
     pub fn swap(&self, v: T, order: Ordering) -> T {
-        T::unpack(self.0.swap(v.pack(), order))
+        T::unpack(T::Repr::swap(&self.0, v.pack(), order))
     }
 
     /// Stores a value into the atomic if the current value is the same as the
@@ -422,7 +423,7 @@ impl<T: Atom> Atomic<T> {
     /// assert_eq!(x.load(Ordering::SeqCst), 10);
     /// ```
     pub fn compare_and_swap(&self, current: T, new: T, order: Ordering) -> T {
-        T::unpack(self.0.compare_and_swap(current.pack(), new.pack(), order))
+        T::unpack(T::Repr::compare_and_swap(&self.0, current.pack(), new.pack(), order))
     }
 
     /// Stores a value into the atomic if the current value is the same as the
@@ -467,7 +468,7 @@ impl<T: Atom> Atomic<T> {
         success: Ordering,
         failure: Ordering,
     ) -> Result<T, T> {
-        self.0.compare_exchange(current.pack(), new.pack(), success, failure)
+        T::Repr::compare_exchange(&self.0, current.pack(), new.pack(), success, failure)
             .map(T::unpack)
             .map_err(T::unpack)
     }
@@ -512,7 +513,7 @@ impl<T: Atom> Atomic<T> {
         success: Ordering,
         failure: Ordering,
     ) -> Result<T, T> {
-        self.0.compare_exchange_weak(current.pack(), new.pack(), success, failure)
+        T::Repr::compare_exchange_weak(&self.0, current.pack(), new.pack(), success, failure)
             .map(T::unpack)
             .map_err(T::unpack)
     }
@@ -522,7 +523,7 @@ impl<T: Atom> Atomic<T> {
 // already specifies this. Maybe we can fix this in the future.
 impl<T: AtomLogic> Atomic<T>
 where
-    Impl<T>: AtomicLogicImpl,
+    T::Repr: PrimitiveAtomLogic,
 {
     /// Bitwise "and" with the current value.
     ///
@@ -546,7 +547,7 @@ where
     /// assert_eq!(x.load(Ordering::SeqCst), 0b100001);
     /// ```
     pub fn fetch_and(&self, val: T, order: Ordering) -> T {
-        T::unpack(self.0.fetch_and(val.pack(), order))
+        T::unpack(T::Repr::fetch_and(&self.0, val.pack(), order))
     }
 
     /// Bitwise "nand" with the current value.
@@ -571,7 +572,7 @@ where
     /// assert_eq!(x.load(Ordering::SeqCst), !(0x13 & 0x31));
     /// ```
     pub fn fetch_nand(&self, val: T, order: Ordering) -> T {
-        T::unpack(self.0.fetch_nand(val.pack(), order))
+        T::unpack(T::Repr::fetch_nand(&self.0, val.pack(), order))
     }
 
     /// Bitwise "or" with the current value.
@@ -596,7 +597,7 @@ where
     /// assert_eq!(x.load(Ordering::SeqCst), 0b111111);
     /// ```
     pub fn fetch_or(&self, val: T, order: Ordering) -> T {
-        T::unpack(self.0.fetch_or(val.pack(), order))
+        T::unpack(T::Repr::fetch_or(&self.0, val.pack(), order))
     }
 
     /// Bitwise "xor" with the current value.
@@ -621,7 +622,7 @@ where
     /// assert_eq!(x.load(Ordering::SeqCst), 0b011110);
     /// ```
     pub fn fetch_xor(&self, val: T, order: Ordering) -> T {
-        T::unpack(self.0.fetch_xor(val.pack(), order))
+        T::unpack(T::Repr::fetch_xor(&self.0, val.pack(), order))
     }
 }
 
@@ -630,7 +631,7 @@ where
 // already specifies this. Maybe we can fix this in the future.
 impl<T: AtomInteger> Atomic<T>
 where
-    Impl<T>: AtomicIntegerImpl,
+    T::Repr: PrimitiveAtomInteger,
 {
     /// Adds to the current value, returning the previous value.
     ///
@@ -651,7 +652,7 @@ where
     /// assert_eq!(x.load(Ordering::SeqCst), 10);
     /// ```
     pub fn fetch_add(&self, val: T, order: Ordering) -> T {
-        T::unpack(self.0.fetch_add(val.pack(), order))
+        T::unpack(T::Repr::fetch_add(&self.0, val.pack(), order))
     }
 
     /// Subtracts from the current value, returning the previous value.
@@ -673,7 +674,7 @@ where
     /// assert_eq!(x.load(Ordering::SeqCst), 10);
     /// ```
     pub fn fetch_sub(&self, val: T, order: Ordering) -> T {
-        T::unpack(self.0.fetch_sub(val.pack(), order))
+        T::unpack(T::Repr::fetch_sub(&self.0, val.pack(), order))
     }
 
     /// Maximum with the current value.
@@ -710,7 +711,7 @@ where
     /// assert!(max_foo == 42);
     /// ```
     pub fn fetch_max(&self, val: T, order: Ordering) -> T {
-        T::unpack(self.0.fetch_max(val.pack(), order))
+        T::unpack(T::Repr::fetch_max(&self.0, val.pack(), order))
     }
 
     /// Minimum with the current value.
@@ -749,7 +750,7 @@ where
     /// assert!(min_foo == 12);
     /// ```
     pub fn fetch_min(&self, val: T, order: Ordering) -> T {
-        T::unpack(self.0.fetch_min(val.pack(), order))
+        T::unpack(T::Repr::fetch_min(&self.0, val.pack(), order))
     }
 
     /// Fetches the value, and applies a function to it that returns an
@@ -794,7 +795,7 @@ where
         F: FnMut(T) -> Option<T>
     {
         let f = |repr| f(T::unpack(repr)).map(Atom::pack);
-        self.0.fetch_update(set_order, fetch_order, f)
+        T::Repr::fetch_update(&self.0, set_order, fetch_order, f)
             .map(Atom::unpack)
             .map_err(Atom::unpack)
     }
@@ -838,10 +839,3 @@ impl<'de, T: Atom + serde::Deserialize<'de>> serde::Deserialize<'de> for Atomic<
         serde::Deserialize::deserialize(deserializer).map(Self::new)
     }
 }
-
-// ===============================================================================================
-// ===== Utilities
-// ===============================================================================================
-
-/// Tiny type alias for avoid long paths in this codebase.
-type Impl<A> = <<A as Atom>::Repr as PrimitiveAtom>::Impl;
