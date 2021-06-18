@@ -1,9 +1,9 @@
 Atomig: generic and convenient `std` atomics
 ============================================
 
-[![Build Status](https://img.shields.io/travis/LukasKalbertodt/atomig/master.svg)](https://travis-ci.org/LukasKalbertodt/atomig)
-[![crates.io version](https://img.shields.io/crates/v/atomig.svg)](https://crates.io/crates/atomig)
-[![docs](https://docs.rs/atomig/badge.svg)](https://docs.rs/atomig)
+[<img alt="CI status of master" src="https://img.shields.io/github/workflow/status/LukasKalbertodt/atomig/CI/master?label=CI&logo=github&logoColor=white&style=for-the-badge" height="23">](https://github.com/LukasKalbertodt/atomig/actions?query=workflow%3ACI+branch%3Amaster)
+[<img alt="Crates.io Version" src="https://img.shields.io/crates/v/atomig?logo=rust&style=for-the-badge" height="23">](https://crates.io/crates/atomig)
+[<img alt="docs.rs" src="https://img.shields.io/crates/v/atomig?color=blue&label=docs&style=for-the-badge" height="23">](https://docs.rs/atomig)
 
 Offers `Atomic<T>` that can be used with primitive and custom types.
 *However*, it only works with types that can actually use atomic operations: a lock-based fallback for other types is not used!
@@ -48,19 +48,14 @@ port.store(Port(8080), Ordering::SeqCst);
 
 For more examples and information see **[the documentation](https://docs.rs/atomig)**.
 
+<br />
+
 ---
 
 ## License
 
-Licensed under either of
-
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
-
-### Contribution
-
+Licensed under either of <a href="LICENSE-APACHE">Apache License, Version
+2.0</a> or <a href="LICENSE-MIT">MIT license</a> at your option.
 Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in the work by you, as defined in the Apache-2.0 license, shall
-be dual licensed as above, without any additional terms or conditions.
+for inclusion in this project by you, as defined in the Apache-2.0 license,
+shall be dual licensed as above, without any additional terms or conditions.
