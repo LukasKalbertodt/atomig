@@ -7,9 +7,7 @@
 //! documentation. And the traits are sealed anyway, so you can't implement
 //! them for your own types.
 
-use std::sync::atomic::{
-    self, Ordering,
-};
+use std::{num::Wrapping, sync::atomic::{self, Ordering}};
 use super::{Atom, AtomLogic, AtomInteger};
 
 
@@ -351,6 +349,19 @@ impl Atom for char {
     }
 }
 
+// We do not implement `AtomInteger` as, to me, it seems like the exact adding
+// and subtraction behavior of integer atomics is not defined anywhere.
+impl<T: Atom> Atom for Wrapping<T> {
+    type Repr = T::Repr;
+    fn pack(self) -> Self::Repr {
+        self.0.pack()
+    }
+    fn unpack(src: Self::Repr) -> Self {
+        Self(T::unpack(src))
+    }
+}
+impl<T: AtomLogic> AtomLogic for Wrapping<T> where T::Repr: PrimitiveAtomLogic {}
+
 
 /// This is just a dummy module to have doc tests.
 ///
@@ -397,5 +408,16 @@ impl Atom for char {
 /// assert_impl_atom::<std::num::NonZeroI64>();
 /// assert_impl_atom::<std::num::NonZeroUsize>();
 /// assert_impl_atom::<std::num::NonZeroIsize>();
+///
+/// assert_impl_atom_logic::<std::num::Wrapping<u8>>();
+/// assert_impl_atom_logic::<std::num::Wrapping<i8>>();
+/// assert_impl_atom_logic::<std::num::Wrapping<u16>>();
+/// assert_impl_atom_logic::<std::num::Wrapping<i16>>();
+/// assert_impl_atom_logic::<std::num::Wrapping<u32>>();
+/// assert_impl_atom_logic::<std::num::Wrapping<i32>>();
+/// assert_impl_atom_logic::<std::num::Wrapping<u64>>();
+/// assert_impl_atom_logic::<std::num::Wrapping<i64>>();
+/// assert_impl_atom_logic::<std::num::Wrapping<usize>>();
+/// assert_impl_atom_logic::<std::num::Wrapping<isize>>();
 /// ```
 mod tests {}
