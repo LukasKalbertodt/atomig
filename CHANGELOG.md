@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `Atom` impl for `std::ptr::NonNull<T>` and `Option<NonNull<T>>`
+- `Atom` and `AtomLogic` impl for `std::num::Wrapping<T>`
+- `Atom` for `std::num::NonZero*` types
 
 ## [0.3.0] - 2021-06-18
 ### Changed

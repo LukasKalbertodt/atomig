@@ -21,7 +21,8 @@ let x = Atomic::new(27); // `Atomic<i32>`
 x.store(39, Ordering::SeqCst);
 ```
 
-This works with almost all primitive types, including `f32`, `f64` and `char`.
+This works with almost all primitive types, including `f32`, `f64` and `char`,
+but also with types like `std::ptr::NonNull` and `std::num::NonZero`.
 
 You can automatically derive `Atom` for your own enum or struct types to use them in `Atomic<T>`.
 There are some limitations, however.
