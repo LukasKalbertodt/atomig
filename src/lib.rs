@@ -38,11 +38,12 @@
 //!
 //! # Traits
 //!
-//! This crate contains a number of traits to safely abstract over different
-//! atomic types. There are four rather "low level" traits (in the `impls`
-//! module) and three more "high level" ones.
+//! This crate contains three main traits to safely abstract over different
+//! atomic types. There are also three traits for plumbing in the `impls`
+//! module but these are considered implementation detail for the most part and
+//! can usually be ignored.
 //!
-//! The most important one is probably [`Atom`]: to use a type `T` in
+//! The most important trait is probably [`Atom`]: to use a type `T` in
 //! `Atomic<T>`, is has to implement [`Atom`]. You can implement that trait for
 //! your own types as long as they can be represented by a type that implements
 //! [`impls::PrimitiveAtom`]. In many cases, you can also simply
@@ -50,14 +51,25 @@
 //! information.
 //!
 //!
+//! # Notes
+//!
+//! Not all types and modules from `std::sync::atomic` are available on all
+//! platforms. `std` itself uses `cfg(target_has_atomic)` attributes to do
+//! that. Unfortunately, these `cfg` attributes are still unstable, thus
+//! `atomig` does not use them right now. This has the unfortunate effect that
+//! this whole library will fail to compile on any targets where any of the
+//! atomic methods/types are unavailable. Once this is stabilized, `atomic`
+//! will use those `cfg` attributes as appropriate to support platforms with
+//! partial atomic support.
+//!
 //! # Cargo features
 //!
 //! This crate has some Cargo features which are disabled by default:
 //! - **`derive`**: enables the custom derives for [`Atom`], [`AtomLogic`] and
 //!   [`AtomInteger`]. It is disabled by default because it requires compiling
 //!   a few dependencies for procedural macros.
-//! - **`serde`**: enables the serde [`Serialize`] and [`Deserialize`] traits
-//!   on `Atomic<T>` if `T` is serializable or deserializable.
+//! - **`serde`**: enables the serde `Serialize` and `Deserialize` traits on
+//!     `Atomic<T>` if `T` is serializable or deserializable.
 //!
 
 use std::fmt;
