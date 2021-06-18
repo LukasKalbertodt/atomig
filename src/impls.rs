@@ -1,5 +1,11 @@
-//! Traits for atomic implementations. You probably do not need to worry about
-//! this module.
+//! Traits for abstracting over `std` atomics. Basically implementation detail!
+//!
+//! This module only promises stability about the trait names and which types
+//! these traits are implemented by (though, new impls can be added at any
+//! time, of course). In particular, the traits' methods and other items are
+//! not part of the public API of `atomig`. Those items are also hidden in the
+//! documentation. And the traits are sealed anyway, so you can't implement
+//! them for your own types.
 
 use std::sync::atomic::{
     self, Ordering,
@@ -20,20 +26,29 @@ mod sealed {
 ///
 /// This trait is implemented exactly for every type that has a corresponding
 /// atomic type in `std::sync::atomic`. You cannot implement this trait for
-/// your own types; see [`Atom`] instead.
+/// your own types; see [`Atom`] instead. This trait's items are not part of
+/// the public API -- see the module docs.
 pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
     /// The standard library type that is the atomic version of `Self`.
+    #[doc(hidden)]
     type Impl;
 
+    #[doc(hidden)]
     fn into_impl(self) -> Self::Impl;
+    #[doc(hidden)]
     fn from_impl(imp: Self::Impl) -> Self;
 
+    #[doc(hidden)]
     fn get_mut(imp: &mut Self::Impl) -> &mut Self;
+    #[doc(hidden)]
     fn load(imp: &Self::Impl, order: Ordering) -> Self;
+    #[doc(hidden)]
     fn store(imp: &Self::Impl, v: Self, order: Ordering);
 
+    #[doc(hidden)]
     fn swap(imp: &Self::Impl, v: Self, order: Ordering) -> Self;
 
+    #[doc(hidden)]
     fn compare_exchange(
         imp: &Self::Impl,
         current: Self,
@@ -42,6 +57,7 @@ pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
         failure: Ordering,
     ) -> Result<Self, Self>;
 
+    #[doc(hidden)]
     fn compare_exchange_weak(
         imp: &Self::Impl,
         current: Self,
@@ -50,6 +66,7 @@ pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
         failure: Ordering,
     ) -> Result<Self, Self>;
 
+    #[doc(hidden)]
     fn fetch_update<F>(
         imp: &Self::Impl,
         set_order: Ordering,
@@ -61,19 +78,35 @@ pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
 }
 
 /// Atomic types from `std::sync::atomic` which support logical operations.
+///
+/// You cannot implement this trait for your own types; see [`AtomLogic`]
+/// instead. This trait's items are not part of the public API -- see the
+/// module docs.
 pub trait PrimitiveAtomLogic: PrimitiveAtom {
+    #[doc(hidden)]
     fn fetch_and(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
+    #[doc(hidden)]
     fn fetch_nand(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
+    #[doc(hidden)]
     fn fetch_or(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
+    #[doc(hidden)]
     fn fetch_xor(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
 }
 
 /// Atomic types from `std::sync::atomic` which support integer operations.
+///
+/// You cannot implement this trait for your own types; see [`AtomInteger`]
+/// instead. This trait's items are not part of the public API -- see the
+/// module docs.
 pub trait PrimitiveAtomInteger: PrimitiveAtom {
+    #[doc(hidden)]
     fn fetch_add(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
+    #[doc(hidden)]
     fn fetch_sub(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
 
+    #[doc(hidden)]
     fn fetch_max(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
+    #[doc(hidden)]
     fn fetch_min(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
 }
 
