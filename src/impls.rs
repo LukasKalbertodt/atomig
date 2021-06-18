@@ -363,6 +363,34 @@ impl<T: Atom> Atom for Wrapping<T> {
 impl<T: AtomLogic> AtomLogic for Wrapping<T> where T::Repr: PrimitiveAtomLogic {}
 
 
+impl<T> Atom for std::ptr::NonNull<T> {
+    type Repr = *mut T;
+    fn pack(self) -> Self::Repr {
+        self.as_ptr().pack()
+    }
+    fn unpack(src: Self::Repr) -> Self {
+        Self::new(<*mut T>::unpack(src))
+            .expect("null value in `<NonNull<T> as Atom>::unpack`")
+    }
+}
+
+impl<T> Atom for Option<std::ptr::NonNull<T>> {
+    type Repr = *mut T;
+    fn pack(self) -> Self::Repr {
+        self.map(|nn| nn.as_ptr())
+            .unwrap_or(std::ptr::null_mut())
+            .pack()
+    }
+    fn unpack(src: Self::Repr) -> Self {
+        if src.is_null() {
+            None
+        } else {
+            Some(std::ptr::NonNull::new(<*mut T>::unpack(src)).unwrap())
+        }
+    }
+}
+
+
 /// This is just a dummy module to have doc tests.
 ///
 /// ```
@@ -393,6 +421,10 @@ impl<T: AtomLogic> AtomLogic for Wrapping<T> where T::Repr: PrimitiveAtomLogic {
 ///
 /// assert_impl_atom::<*mut ()>();
 /// assert_impl_atom::<*mut String>();
+/// assert_impl_atom::<std::ptr::NonNull<()>>();
+/// assert_impl_atom::<std::ptr::NonNull<String>>();
+/// assert_impl_atom::<Option<std::ptr::NonNull<()>>>();
+/// assert_impl_atom::<Option<std::ptr::NonNull<String>>>();
 ///
 /// assert_impl_atom::<char>();
 /// assert_impl_atom::<f32>();
