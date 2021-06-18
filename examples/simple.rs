@@ -21,7 +21,7 @@ fn main() {
     {
         let b = b.clone();
         thread::spawn(move || {
-            while b.compare_and_swap(true, false, Ordering::SeqCst) != true {}
+            while b.compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst).is_err() {}
             println!("Reset it to false!");
         });
     }

@@ -34,13 +34,6 @@ pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
 
     fn swap(imp: &Self::Impl, v: Self, order: Ordering) -> Self;
 
-    fn compare_and_swap(
-        imp: &Self::Impl,
-        current: Self,
-        new: Self,
-        order: Ordering,
-    ) -> Self;
-
     fn compare_exchange(
         imp: &Self::Impl,
         current: Self,
@@ -131,23 +124,10 @@ macro_rules! pass_through_methods {
             imp.store(v, order)
         }
 
-
         #[inline(always)]
         fn swap(imp: &Self::Impl, v: Self, order: Ordering) -> Self {
             imp.swap(v, order)
         }
-
-
-        #[inline(always)]
-        fn compare_and_swap(
-            imp: &Self::Impl,
-            current: Self,
-            new: Self,
-            order: Ordering,
-        ) -> Self {
-            imp.compare_and_swap(current, new, order)
-        }
-
 
         #[inline(always)]
         fn compare_exchange(
@@ -159,7 +139,6 @@ macro_rules! pass_through_methods {
         ) -> Result<Self, Self> {
             imp.compare_exchange(current, new, success, failure)
         }
-
 
         #[inline(always)]
         fn compare_exchange_weak(

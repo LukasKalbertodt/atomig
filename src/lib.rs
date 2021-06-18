@@ -296,11 +296,11 @@ where
 /// make sure their `pack` and `unpack` operations are fast, as they are used a
 /// lot in this type.
 ///
-/// For all methods that do a comparison (e.g. `compare_and_swap`), keep in
+/// For all methods that do a comparison (e.g. `compare_exchange`), keep in
 /// mind that the comparison is performed on the bits of the underlying type
 /// which can sometimes lead to unexpected behavior. For example, for floats,
 /// there are many bit patterns that represent NaN. So the atomic might indeed
-/// store a NaN representation at a moment, but `compare_and_swap` called with
+/// store a NaN representation at a moment, but `compare_exchange` called with
 /// `current = NaN` might not swap, because both NaN differ in the bit
 /// representation.
 ///
@@ -394,36 +394,6 @@ impl<T: Atom> Atomic<T> {
     /// ```
     pub fn swap(&self, v: T, order: Ordering) -> T {
         T::unpack(T::Repr::swap(&self.0, v.pack(), order))
-    }
-
-    /// Stores a value into the atomic if the current value is the same as the
-    /// `current` value.
-    ///
-    /// The return value is always the previous value. If it is equal to
-    /// `current`, then the atomic was updated.
-    ///
-    /// `compare_and_swap` also takes an [`Ordering`] argument which describes
-    /// the memory ordering of this operation. Notice that even when using
-    /// `AcqRel`, the operation might fail and hence just perform an `Acquire`
-    /// load, but not have `Release` semantics. Using `Acquire` makes the store
-    /// part of this operation `Relaxed` if it happens, and using `Release`
-    /// makes the load part `Relaxed`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use atomig::{Atomic, Ordering};
-    ///
-    /// let x = Atomic::new(5);
-    ///
-    /// assert_eq!(x.compare_and_swap(5, 10, Ordering::SeqCst), 5);
-    /// assert_eq!(x.load(Ordering::SeqCst), 10);
-    ///
-    /// assert_eq!(x.compare_and_swap(6, 12, Ordering::SeqCst), 10);
-    /// assert_eq!(x.load(Ordering::SeqCst), 10);
-    /// ```
-    pub fn compare_and_swap(&self, current: T, new: T, order: Ordering) -> T {
-        T::unpack(T::Repr::compare_and_swap(&self.0, current.pack(), new.pack(), order))
     }
 
     /// Stores a value into the atomic if the current value is the same as the

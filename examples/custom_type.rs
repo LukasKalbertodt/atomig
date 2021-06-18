@@ -27,11 +27,11 @@ fn main() {
     {
         let animal = animal.clone();
         thread::spawn(move || {
-            while animal.compare_and_swap(Animal::Dog, Animal::Fox, Ordering::SeqCst)
-                != Animal::Dog
+            while animal
+                .compare_exchange(Animal::Dog, Animal::Fox, Ordering::SeqCst, Ordering::SeqCst)
+                .is_err()
             {
                 thread::sleep(Duration::from_millis(2));
-
             }
             println!("Changed dog to fox!");
         });
