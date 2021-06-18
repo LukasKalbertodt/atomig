@@ -487,6 +487,53 @@ impl<T: Atom> Atomic<T> {
             .map(T::unpack)
             .map_err(T::unpack)
     }
+
+    /// Fetches the value, and applies a function to it that returns an
+    /// optional new value. Returns a `Result` of `Ok(previous_value)` if the
+    /// function returned `Some(_)`, else `Err(previous_value)`.
+    ///
+    /// Note: This may call the function multiple times if the value has been
+    /// changed from other threads in the meantime, as long as the function
+    /// returns `Some(_)`, but the function will have been applied but once to
+    /// the stored value.
+    ///
+    /// `fetch_update` takes two [`Ordering`] arguments to describe the memory
+    /// ordering of this operation. The first describes the required ordering
+    /// for loads and failed updates while the second describes the required
+    /// ordering when the operation finally succeeds. Beware that this is
+    /// different from the two modes in `compare_exchange`!
+    ///
+    /// Using `Acquire` as success ordering makes the store part of this
+    /// operation `Relaxed`, and using `Release` makes the final successful
+    /// load `Relaxed`. The (failed) load ordering can only be `SeqCst`,
+    /// `Acquire` or `Relaxed` and must be equivalent to or weaker than the
+    /// success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::{Atomic, Ordering};
+    ///
+    /// let x = Atomic::new(7);
+    /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(7));
+    /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(7));
+    /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(8));
+    /// assert_eq!(x.load(Ordering::SeqCst), 9);
+    /// ```
+    pub fn fetch_update<F>(
+        &self,
+        set_order: Ordering,
+        fetch_order: Ordering,
+        mut f: F,
+    ) -> Result<T, T>
+    where
+        F: FnMut(T) -> Option<T>
+    {
+        let f = |repr| f(T::unpack(repr)).map(Atom::pack);
+        T::Repr::fetch_update(&self.0, set_order, fetch_order, f)
+            .map(Atom::unpack)
+            .map_err(Atom::unpack)
+    }
 }
 
 // TODO: the `where` bound should not be necessary as the `AtomLogic` trait
@@ -721,53 +768,6 @@ where
     /// ```
     pub fn fetch_min(&self, val: T, order: Ordering) -> T {
         T::unpack(T::Repr::fetch_min(&self.0, val.pack(), order))
-    }
-
-    /// Fetches the value, and applies a function to it that returns an
-    /// optional new value. Returns a `Result` of `Ok(previous_value)` if the
-    /// function returned `Some(_)`, else `Err(previous_value)`.
-    ///
-    /// Note: This may call the function multiple times if the value has been
-    /// changed from other threads in the meantime, as long as the function
-    /// returns `Some(_)`, but the function will have been applied but once to
-    /// the stored value.
-    ///
-    /// `fetch_update` takes two [`Ordering`] arguments to describe the memory
-    /// ordering of this operation. The first describes the required ordering
-    /// for loads and failed updates while the second describes the required
-    /// ordering when the operation finally succeeds. Beware that this is
-    /// different from the two modes in `compare_exchange`!
-    ///
-    /// Using `Acquire` as success ordering makes the store part of this
-    /// operation `Relaxed`, and using `Release` makes the final successful
-    /// load `Relaxed`. The (failed) load ordering can only be `SeqCst`,
-    /// `Acquire` or `Relaxed` and must be equivalent to or weaker than the
-    /// success ordering.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use atomig::{Atomic, Ordering};
-    ///
-    /// let x = Atomic::new(7);
-    /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(7));
-    /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(7));
-    /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(8));
-    /// assert_eq!(x.load(Ordering::SeqCst), 9);
-    /// ```
-    pub fn fetch_update<F>(
-        &self,
-        set_order: Ordering,
-        fetch_order: Ordering,
-        mut f: F,
-    ) -> Result<T, T>
-    where
-        F: FnMut(T) -> Option<T>
-    {
-        let f = |repr| f(T::unpack(repr)).map(Atom::pack);
-        T::Repr::fetch_update(&self.0, set_order, fetch_order, f)
-            .map(Atom::unpack)
-            .map_err(Atom::unpack)
     }
 }
 

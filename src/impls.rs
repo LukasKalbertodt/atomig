@@ -49,6 +49,15 @@ pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
         success: Ordering,
         failure: Ordering,
     ) -> Result<Self, Self>;
+
+    fn fetch_update<F>(
+        imp: &Self::Impl,
+        set_order: Ordering,
+        fetch_order: Ordering,
+        f: F,
+    ) -> Result<Self, Self>
+    where
+        F: FnMut(Self) -> Option<Self>;
 }
 
 /// Atomic types from `std::sync::atomic` which support logical operations.
@@ -66,15 +75,6 @@ pub trait PrimitiveAtomInteger: PrimitiveAtom {
 
     fn fetch_max(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
     fn fetch_min(imp: &Self::Impl, val: Self, order: Ordering) -> Self;
-
-    fn fetch_update<F>(
-        imp: &Self::Impl,
-        set_order: Ordering,
-        fetch_order: Ordering,
-        f: F,
-    ) -> Result<Self, Self>
-    where
-        F: FnMut(Self) -> Option<Self>;
 }
 
 
@@ -150,6 +150,18 @@ macro_rules! pass_through_methods {
         ) -> Result<Self, Self> {
             imp.compare_exchange_weak(current, new, success, failure)
         }
+
+        fn fetch_update<F>(
+            imp: &Self::Impl,
+            set_order: Ordering,
+            fetch_order: Ordering,
+            f: F,
+        ) -> Result<Self, Self>
+        where
+            F: FnMut(Self) -> Option<Self>
+        {
+            imp.fetch_update(set_order, fetch_order, f)
+        }
     };
 }
 
@@ -199,18 +211,6 @@ macro_rules! integer_pass_through_methods {
 
         fn fetch_min(imp: &Self::Impl, val: Self, order: Ordering) -> Self {
             imp.fetch_min(val, order)
-        }
-
-        fn fetch_update<F>(
-            imp: &Self::Impl,
-            set_order: Ordering,
-            fetch_order: Ordering,
-            f: F,
-        ) -> Result<Self, Self>
-        where
-            F: FnMut(Self) -> Option<Self>
-        {
-            imp.fetch_update(set_order, fetch_order, f)
         }
     };
 }
