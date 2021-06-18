@@ -5,7 +5,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
+### Changed
+- **Breaking**: the minimal supported Rust version (MSRV) is now 1.53
+- **Breaking**: Remove deprecated method `compare_and_swap`. This method is
+  deprecated in std and can be easily replaced by `compare_exchange`. See
+  `std` docs for the migration.
+- **Breaking**: all items of traits in the `impls` module are now considered
+  implementation detail and not part of the public API.
+- **Breaking**: the traits in the `impls` module were refactored and a lot
+  changed about all of them. But due to the previous point, you are not
+  supposed to care anymore :P
+- Make `fetch_update` available to all `Atomic<T>`, not only `T: AtomicInteger`.
 
 ## [0.2.0] - 2020-07-30
 ### Breaking
