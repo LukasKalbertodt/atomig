@@ -78,9 +78,9 @@ else
     ERROR=1
 fi
 
-## windows and mac OS line endings =======================
+## tab characters =======================
 echo ""
-echo "=== Searching for files with windows/macOS line endings================="
+echo "=== Searching for files with tab characters ================="
 
 FOUNDTAB=0
 for f in $(find $FOLDER -regex $FILES -not -regex $EXCLUDE); do
