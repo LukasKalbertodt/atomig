@@ -350,3 +350,52 @@ impl Atom for char {
         Self::try_from(src).expect("invalid value in <char as Atom>::unpack")
     }
 }
+
+
+/// This is just a dummy module to have doc tests.
+///
+/// ```
+/// use atomig::{Atom, AtomLogic, AtomInteger, impls::{PrimitiveAtomLogic, PrimitiveAtomInteger}};
+///
+/// fn assert_impl_atom<T: Atom>() {}
+/// fn assert_impl_atom_logic<T: AtomLogic>()
+/// where
+///     T::Repr: PrimitiveAtomLogic,
+/// {}
+/// fn assert_impl_atom_all<T: AtomLogic + AtomInteger>()
+/// where
+///     T::Repr: PrimitiveAtomInteger + PrimitiveAtomLogic,
+/// {}
+///
+/// assert_impl_atom_all::<u8>();
+/// assert_impl_atom_all::<i8>();
+/// assert_impl_atom_all::<u16>();
+/// assert_impl_atom_all::<i16>();
+/// assert_impl_atom_all::<u32>();
+/// assert_impl_atom_all::<i32>();
+/// assert_impl_atom_all::<u64>();
+/// assert_impl_atom_all::<i64>();
+/// assert_impl_atom_all::<usize>();
+/// assert_impl_atom_all::<isize>();
+///
+/// assert_impl_atom_logic::<bool>();
+///
+/// assert_impl_atom::<*mut ()>();
+/// assert_impl_atom::<*mut String>();
+///
+/// assert_impl_atom::<char>();
+/// assert_impl_atom::<f32>();
+/// assert_impl_atom::<f64>();
+///
+/// assert_impl_atom::<std::num::NonZeroU8>();
+/// assert_impl_atom::<std::num::NonZeroI8>();
+/// assert_impl_atom::<std::num::NonZeroU16>();
+/// assert_impl_atom::<std::num::NonZeroI16>();
+/// assert_impl_atom::<std::num::NonZeroU32>();
+/// assert_impl_atom::<std::num::NonZeroI32>();
+/// assert_impl_atom::<std::num::NonZeroU64>();
+/// assert_impl_atom::<std::num::NonZeroI64>();
+/// assert_impl_atom::<std::num::NonZeroUsize>();
+/// assert_impl_atom::<std::num::NonZeroIsize>();
+/// ```
+mod tests {}
