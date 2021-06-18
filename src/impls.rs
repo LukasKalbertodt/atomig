@@ -265,7 +265,7 @@ impl<T> PrimitiveAtom for *mut T {
 // ----- Integers and `bool` -----
 
 macro_rules! impl_std_atomics {
-    ($ty:ty, $impl_ty:ident, $is_int:ident) => {
+    ($ty:ty, $non_zero_ty:ident, $impl_ty:ident, $is_int:ident) => {
         impl Atom for $ty {
             type Repr = Self;
             id_pack_unpack!();
@@ -282,28 +282,42 @@ macro_rules! impl_std_atomics {
             logical_pass_through_methods!();
         }
 
-        impl_std_atomics!(@int_methods $ty, $impl_ty, $is_int);
+        impl_std_atomics!(@int_methods $ty, $non_zero_ty, $impl_ty, $is_int);
     };
-    (@int_methods $ty:ty, $impl_ty:ident, true) => {
+    (@int_methods $ty:ty, $non_zero_ty:ident, $impl_ty:ident, true) => {
         impl AtomInteger for $ty {}
         impl PrimitiveAtomInteger for $ty {
             integer_pass_through_methods!();
         }
+
+        impl Atom for std::num::$non_zero_ty {
+            type Repr = $ty;
+            fn pack(self) -> Self::Repr {
+                self.get()
+            }
+
+            fn unpack(src: Self::Repr) -> Self {
+                // Since `AtomLogic` and `AtomInteger` is not implemented for
+                // NonZero types, there is no way zero can be the result of any
+                // atomic operation. Thus this should never happen.
+                Self::new(src).expect("zero value in `Atom::unpack` for NonZero type")
+            }
+        }
     };
-    (@int_methods $ty:ty, $impl_ty:ident, false) => {};
+    (@int_methods $ty:ty, $non_zero_ty:ident, $impl_ty:ident, false) => {};
 }
 
-impl_std_atomics!(bool, AtomicBool, false);
-impl_std_atomics!(u8, AtomicU8, true);
-impl_std_atomics!(i8, AtomicI8, true);
-impl_std_atomics!(u16, AtomicU16, true);
-impl_std_atomics!(i16, AtomicI16, true);
-impl_std_atomics!(u32, AtomicU32, true);
-impl_std_atomics!(i32, AtomicI32, true);
-impl_std_atomics!(u64, AtomicU64, true);
-impl_std_atomics!(i64, AtomicI64, true);
-impl_std_atomics!(usize, AtomicUsize, true);
-impl_std_atomics!(isize, AtomicIsize, true);
+impl_std_atomics!(bool, _Dummy, AtomicBool, false);
+impl_std_atomics!(u8, NonZeroU8, AtomicU8, true);
+impl_std_atomics!(i8, NonZeroI8, AtomicI8, true);
+impl_std_atomics!(u16, NonZeroU16, AtomicU16, true);
+impl_std_atomics!(i16, NonZeroI16, AtomicI16, true);
+impl_std_atomics!(u32, NonZeroU32, AtomicU32, true);
+impl_std_atomics!(i32, NonZeroI32, AtomicI32, true);
+impl_std_atomics!(u64, NonZeroU64, AtomicU64, true);
+impl_std_atomics!(i64, NonZeroI64, AtomicI64, true);
+impl_std_atomics!(usize, NonZeroUsize, AtomicUsize, true);
+impl_std_atomics!(isize, NonZeroIsize, AtomicIsize, true);
 
 // ----- Implementations for non-atomic primitive types ------------------------------------------
 impl Atom for f32 {
