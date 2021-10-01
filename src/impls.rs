@@ -390,6 +390,30 @@ impl<T> Atom for Option<std::ptr::NonNull<T>> {
     }
 }
 
+macro_rules! impl_option_non_zero {
+    ($ty:ident = $repr:ty) => {
+        impl Atom for Option<std::num::$ty> {
+            type Repr = $repr;
+            fn pack(self) -> Self::Repr {
+                self.map(std::num::$ty::get).unwrap_or(0).pack()
+            }
+            fn unpack(src: Self::Repr) -> Self {
+                std::num::$ty::new(src)
+            }
+        }
+    };
+}
+
+impl_option_non_zero!(NonZeroU8 = u8);
+impl_option_non_zero!(NonZeroI8 = i8);
+impl_option_non_zero!(NonZeroU16 = u16);
+impl_option_non_zero!(NonZeroI16 = i16);
+impl_option_non_zero!(NonZeroU32 = u32);
+impl_option_non_zero!(NonZeroI32 = i32);
+impl_option_non_zero!(NonZeroU64 = u64);
+impl_option_non_zero!(NonZeroI64 = i64);
+impl_option_non_zero!(NonZeroUsize = usize);
+impl_option_non_zero!(NonZeroIsize = isize);
 
 /// This is just a dummy module to have doc tests.
 ///
