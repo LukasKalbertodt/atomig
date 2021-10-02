@@ -401,6 +401,12 @@ macro_rules! impl_option_non_zero {
                 std::num::$ty::new(src)
             }
         }
+
+        // Semantically, an `Option<NonZeroFoo>` represents `Foo` exactly. It
+        // also has the exact same memory layout. It's just that we assign
+        // the "symbol" `None` to 0. Any integer operation that leads to 0 on
+        // the underlying type will result in `None`.
+        impl AtomInteger for Option<std::num::$ty> {}
     };
 }
 
