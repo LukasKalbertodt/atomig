@@ -220,6 +220,14 @@ macro_rules! gen_tests_for_opt_non_zeroes {
                 let a = Atomic::new($ty::new(33));
                 assert_eq!(a.fetch_sub($ty::new(7), Ordering::SeqCst), $ty::new(33));
                 assert_eq!(a.load(Ordering::SeqCst), $ty::new(26));
+
+                let a = Atomic::new($ty::new(33));
+                assert_eq!(a.fetch_sub(None, Ordering::SeqCst), $ty::new(33));
+                assert_eq!(a.load(Ordering::SeqCst), $ty::new(33));
+
+                let a = Atomic::new($ty::new(27));
+                assert_eq!(a.fetch_sub($ty::new(27), Ordering::SeqCst), $ty::new(27));
+                assert_eq!(a.load(Ordering::SeqCst), None);
             }
         }
     };
