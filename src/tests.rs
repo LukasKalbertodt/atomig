@@ -200,3 +200,38 @@ impl Atom for Foo {
         }
     }
 }
+
+macro_rules! gen_tests_for_opt_non_zeroes {
+    ($mod_name:ident, $ty:ident) => {
+        mod $mod_name {
+            use super::*;
+            use std::num::$ty;
+
+            generic_tests!(Option<$ty>, $ty::new(7), $ty::new(33));
+            default_tests!(Option<$ty>);
+            serde_tests!(Option<$ty>, $ty::new(7));
+
+            #[test]
+            fn integer() {
+                let a = Atomic::new($ty::new(7));
+                assert_eq!(a.fetch_add($ty::new(33), Ordering::SeqCst), $ty::new(7));
+                assert_eq!(a.load(Ordering::SeqCst), $ty::new(40));
+
+                let a = Atomic::new($ty::new(33));
+                assert_eq!(a.fetch_sub($ty::new(7), Ordering::SeqCst), $ty::new(33));
+                assert_eq!(a.load(Ordering::SeqCst), $ty::new(26));
+            }
+        }
+    };
+}
+
+gen_tests_for_opt_non_zeroes!(nz_u8,    NonZeroU8);
+gen_tests_for_opt_non_zeroes!(nz_i8,    NonZeroI8);
+gen_tests_for_opt_non_zeroes!(nz_u16,   NonZeroU16);
+gen_tests_for_opt_non_zeroes!(nz_i16,   NonZeroI16);
+gen_tests_for_opt_non_zeroes!(nz_u32,   NonZeroU32);
+gen_tests_for_opt_non_zeroes!(nz_i32,   NonZeroI32);
+gen_tests_for_opt_non_zeroes!(nz_u64,   NonZeroU64);
+gen_tests_for_opt_non_zeroes!(nz_i64,   NonZeroI64);
+gen_tests_for_opt_non_zeroes!(nz_usize, NonZeroUsize);
+gen_tests_for_opt_non_zeroes!(nz_isize, NonZeroIsize);
