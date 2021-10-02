@@ -1,68 +1,83 @@
-use super::Atom;
+use crate::{Atom, Atomic, Ordering};
 
-macro_rules! gen_tests {
-    (
-        $mod_name:ident, $ty:ty, $val0:expr, $val1:expr,
-        [
-            $with_logic:ident $with_int:ident
-            $with_default:ident $with_serde:ident
-        ]
-    ) => {
-        mod $mod_name {
-            use crate::{Atomic, Ordering};
+// ===============================================================================================
+// ===== Single test snippets
+// ===============================================================================================
 
-            #[test]
-            fn new() {
-                let _: Atomic<$ty> = Atomic::new($val0);
-            }
+macro_rules! generic_tests {
+    ($ty:ty, $val0:expr, $val1:expr) => {
+        #[test]
+        fn new() {
+            let _: Atomic<$ty> = Atomic::new($val0);
+        }
 
-            #[test]
-            fn load_store() {
-                let a = Atomic::new($val0);
-                assert_eq!(a.load(Ordering::SeqCst), $val0);
+        #[test]
+        fn load_store() {
+            let a = Atomic::new($val0);
+            assert_eq!(a.load(Ordering::SeqCst), $val0);
 
-                a.store($val1, Ordering::SeqCst);
-                assert_eq!(a.load(Ordering::SeqCst), $val1);
-            }
+            a.store($val1, Ordering::SeqCst);
+            assert_eq!(a.load(Ordering::SeqCst), $val1);
+        }
 
-            #[test]
-            fn into_inner() {
-                let a = Atomic::new($val0);
-                assert_eq!(a.into_inner(), $val0);
-            }
+        #[test]
+        fn into_inner() {
+            let a = Atomic::new($val0);
+            assert_eq!(a.into_inner(), $val0);
+        }
 
-            #[test]
-            fn swap() {
-                let a = Atomic::new($val0);
-                assert_eq!(a.swap($val1, Ordering::SeqCst), $val0);
-                assert_eq!(a.load(Ordering::SeqCst), $val1);
-            }
+        #[test]
+        fn swap() {
+            let a = Atomic::new($val0);
+            assert_eq!(a.swap($val1, Ordering::SeqCst), $val0);
+            assert_eq!(a.load(Ordering::SeqCst), $val1);
+        }
 
-            // TODO: compare_and_* methods
+        #[test]
+        fn fmt_debug() {
+            let a = Atomic::new($val0);
+            assert_eq!(format!("{:?}", a), format!("{:?}", $val0));
+        }
 
-            gen_tests!(@logic $val0, $val1, $with_logic);
+        #[test]
+        fn from() {
+            let a = Atomic::new($val0);
+            let b: Atomic<$ty> = $val0.into();
+            assert_eq!(a.load(Ordering::SeqCst), b.load(Ordering::SeqCst));
+        }
 
-            gen_tests!(@integer $val0, $val1, $with_int);
+        // TODO: compare_and_* methods
+    };
+}
 
-            gen_tests!(@default $ty, $with_default);
-
-            gen_tests!(@serde $val0, $ty, $with_serde);
-
-            #[test]
-            fn fmt_debug() {
-                let a = Atomic::new($val0);
-                assert_eq!(format!("{:?}", a), format!("{:?}", $val0));
-            }
-
-            #[test]
-            fn from() {
-                let a = Atomic::new($val0);
-                let b: Atomic<$ty> = $val0.into();
-                assert_eq!(a.load(Ordering::SeqCst), b.load(Ordering::SeqCst));
-            }
+macro_rules! default_tests {
+    ($ty:ty) => {
+        #[test]
+        fn default() {
+            let a: Atomic<$ty> = Default::default();
+            assert_eq!(a.load(Ordering::SeqCst), <$ty>::default());
         }
     };
-    (@logic $val0:expr, $val1:expr, y) => {
+}
+
+macro_rules! serde_tests {
+    ($ty:ty, $val0:expr) => {
+        #[cfg(feature = "serde")]
+        use bincode;
+
+        #[cfg(feature = "serde")]
+        #[test]
+        fn test_serde_round_trip() {
+            let src = Atomic::new($val0);
+            let serialized = bincode::serialize(&src).unwrap();
+            let deserialized: Atomic<$ty> = bincode::deserialize(&serialized).unwrap();
+            assert_eq!(src.load(Ordering::SeqCst), deserialized.load(Ordering::SeqCst));
+        }
+    };
+}
+
+macro_rules! logic_tests {
+    ($val0:expr, $val1:expr) => {
         #[test]
         fn logic() {
             let a = Atomic::new($val0);
@@ -82,9 +97,10 @@ macro_rules! gen_tests {
             assert_eq!(a.load(Ordering::SeqCst), $val0 ^ $val1);
         }
     };
-    (@logic $val0:expr, $val1:expr, n) => {};
+}
 
-    (@integer $val0:expr, $val1:expr, y) => {
+macro_rules! int_tests {
+    ($val0:expr, $val1:expr) => {
         #[test]
         fn integer() {
             let a = Atomic::new($val0);
@@ -96,51 +112,64 @@ macro_rules! gen_tests {
             assert_eq!(a.load(Ordering::SeqCst), $val0.wrapping_sub($val1));
         }
     };
-    (@integer $val0:expr, $val1:expr, n) => {};
-
-    (@default $ty:ty, y) => {
-        #[test]
-        fn default() {
-            let a: Atomic<$ty> = Default::default();
-            assert_eq!(a.load(Ordering::SeqCst), <$ty>::default());
-        }
-    };
-    (@default $ty:ty, n) => {};
-
-    (@serde $val0:expr, $ty:ty, y) => {
-        #[cfg(feature = "serde")]
-        use bincode;
-
-        #[cfg(feature = "serde")]
-        #[test]
-        fn test_serde_round_trip() {
-            let src = Atomic::new($val0);
-            let serialized = bincode::serialize(&src).unwrap();
-            let deserialized: Atomic<$ty> = bincode::deserialize(&serialized).unwrap();
-            assert_eq!(src.load(Ordering::SeqCst), deserialized.load(Ordering::SeqCst));
-        }
-    };
-
-    (@serde $val0:expr, $ty:ty, n) => {};
 }
 
-//         mod     ty     val0    val1     [logic int default serde]
-gen_tests!(_bool,  bool,  true,   false,   [y n y y]);
-gen_tests!(_u8,    u8,    7u8,    33u8,    [y y y y]);
-gen_tests!(_i8,    i8,    7i8,    33i8,    [y y y y]);
-gen_tests!(_u16,   u16,   7u16,   33u16,   [y y y y]);
-gen_tests!(_i16,   i16,   7i16,   33i16,   [y y y y]);
-gen_tests!(_u32,   u32,   7u32,   33u32,   [y y y y]);
-gen_tests!(_i32,   i32,   7i32,   33i32,   [y y y y]);
-gen_tests!(_u64,   u64,   7u64,   33u64,   [y y y y]);
-gen_tests!(_i64,   i64,   7i64,   33i64,   [y y y y]);
-gen_tests!(_usize, usize, 7usize, 33usize, [y y y y]);
-gen_tests!(_isize, isize, 7isize, 33isize, [y y y y]);
-gen_tests!(_f32,   f32,   7.0f32, 33.0f32, [n n y y]);
-gen_tests!(_f64,   f64,   7.0f64, 33.0f64, [n n y y]);
-gen_tests!(_char,  char,  'x',    '♥',     [n n y y]);
-gen_tests!(_ptr, *mut String, 0 as *mut String, 0xBADC0DE as *mut String,   [n n n n]);
-gen_tests!(custom, super::Foo, super::Foo::Nothing, super::Foo::Set(0b101), [n n y n]);
+/// If the first token is `y`, emit the following tokens (inside a brace),
+/// otherwise emit nothing.
+macro_rules! emit_if {
+    (n, { $($t:tt)* }) => {};
+    (y, { $($t:tt)* }) => { $($t)* };
+}
+
+
+// ===============================================================================================
+// ===== Actual tests of different types
+// ===============================================================================================
+
+macro_rules! gen_tests_for_primitives {
+    (
+        $mod_name:ident, $ty:ty, $val0:expr, $val1:expr,
+        [$with_logic:ident $with_int:ident]
+    ) => {
+        mod $mod_name {
+            use super::*;
+
+            generic_tests!($ty, $val0, $val1);
+            default_tests!($ty);
+            serde_tests!($ty, $val0);
+
+            emit_if!($with_logic, { logic_tests!($val0, $val1); });
+            emit_if!($with_int, { int_tests!($val0, $val1); });
+        }
+    };
+}
+
+//                        mod     ty     val0    val1     [logic int]
+gen_tests_for_primitives!(_bool,  bool,  true,   false,   [y n]);
+gen_tests_for_primitives!(_u8,    u8,    7u8,    33u8,    [y y]);
+gen_tests_for_primitives!(_i8,    i8,    7i8,    33i8,    [y y]);
+gen_tests_for_primitives!(_u16,   u16,   7u16,   33u16,   [y y]);
+gen_tests_for_primitives!(_i16,   i16,   7i16,   33i16,   [y y]);
+gen_tests_for_primitives!(_u32,   u32,   7u32,   33u32,   [y y]);
+gen_tests_for_primitives!(_i32,   i32,   7i32,   33i32,   [y y]);
+gen_tests_for_primitives!(_u64,   u64,   7u64,   33u64,   [y y]);
+gen_tests_for_primitives!(_i64,   i64,   7i64,   33i64,   [y y]);
+gen_tests_for_primitives!(_usize, usize, 7usize, 33usize, [y y]);
+gen_tests_for_primitives!(_isize, isize, 7isize, 33isize, [y y]);
+gen_tests_for_primitives!(_f32,   f32,   7.0f32, 33.0f32, [n n]);
+gen_tests_for_primitives!(_f64,   f64,   7.0f64, 33.0f64, [n n]);
+gen_tests_for_primitives!(_char,  char,  'x',    '♥',     [n n]);
+
+mod _ptr {
+    use super::*;
+    generic_tests!(Foo, Foo::Nothing, Foo::Set(0b101));
+}
+
+mod custom {
+    use super::*;
+    generic_tests!(Foo, Foo::Nothing, Foo::Set(0b101));
+    default_tests!(Foo);
+}
 
 
 #[derive(Debug, PartialEq, Eq)]
