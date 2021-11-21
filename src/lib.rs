@@ -72,7 +72,13 @@
 //!     `Atomic<T>` if `T` is serializable or deserializable.
 //!
 
-use std::fmt;
+#![no_std]
+
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
+use core::fmt;
 use crate::impls::{PrimitiveAtom, PrimitiveAtomLogic, PrimitiveAtomInteger};
 
 pub mod impls;
@@ -81,7 +87,7 @@ mod tests;
 
 /// Reexported from `std` for import convenience.
 #[doc(no_inline)]
-pub use std::sync::atomic::Ordering;
+pub use core::sync::atomic::Ordering;
 
 #[cfg(feature = "derive")]
 pub use atomig_macro::{Atom, AtomInteger, AtomLogic};
