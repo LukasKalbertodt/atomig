@@ -7,7 +7,7 @@
 //! documentation. And the traits are sealed anyway, so you can't implement
 //! them for your own types.
 
-use std::{num::Wrapping, sync::atomic::{self, Ordering}};
+use core::{num::Wrapping, sync::atomic::{self, Ordering}};
 use super::{Atom, AtomLogic, AtomInteger};
 
 
@@ -288,7 +288,7 @@ macro_rules! impl_std_atomics {
             integer_pass_through_methods!();
         }
 
-        impl Atom for std::num::$non_zero_ty {
+        impl Atom for core::num::$non_zero_ty {
             type Repr = $ty;
             fn pack(self) -> Self::Repr {
                 self.get()
@@ -344,7 +344,7 @@ impl Atom for char {
         self.into()
     }
     fn unpack(src: Self::Repr) -> Self {
-        use std::convert::TryFrom;
+        use core::convert::TryFrom;
         Self::try_from(src).expect("invalid value in <char as Atom>::unpack")
     }
 }
@@ -363,7 +363,7 @@ impl<T: Atom> Atom for Wrapping<T> {
 impl<T: AtomLogic> AtomLogic for Wrapping<T> where T::Repr: PrimitiveAtomLogic {}
 
 
-impl<T> Atom for std::ptr::NonNull<T> {
+impl<T> Atom for core::ptr::NonNull<T> {
     type Repr = *mut T;
     fn pack(self) -> Self::Repr {
         self.as_ptr().pack()
@@ -374,31 +374,31 @@ impl<T> Atom for std::ptr::NonNull<T> {
     }
 }
 
-impl<T> Atom for Option<std::ptr::NonNull<T>> {
+impl<T> Atom for Option<core::ptr::NonNull<T>> {
     type Repr = *mut T;
     fn pack(self) -> Self::Repr {
         self.map(|nn| nn.as_ptr())
-            .unwrap_or(std::ptr::null_mut())
+            .unwrap_or(core::ptr::null_mut())
             .pack()
     }
     fn unpack(src: Self::Repr) -> Self {
         if src.is_null() {
             None
         } else {
-            Some(std::ptr::NonNull::new(<*mut T>::unpack(src)).unwrap())
+            Some(core::ptr::NonNull::new(<*mut T>::unpack(src)).unwrap())
         }
     }
 }
 
 macro_rules! impl_option_non_zero {
     ($ty:ident = $repr:ty) => {
-        impl Atom for Option<std::num::$ty> {
+        impl Atom for Option<core::num::$ty> {
             type Repr = $repr;
             fn pack(self) -> Self::Repr {
-                self.map(std::num::$ty::get).unwrap_or(0).pack()
+                self.map(core::num::$ty::get).unwrap_or(0).pack()
             }
             fn unpack(src: Self::Repr) -> Self {
-                std::num::$ty::new(src)
+                core::num::$ty::new(src)
             }
         }
 
@@ -406,7 +406,7 @@ macro_rules! impl_option_non_zero {
         // also has the exact same memory layout. It's just that we assign
         // the "symbol" `None` to 0. Any integer operation that leads to 0 on
         // the underlying type will result in `None`.
-        impl AtomInteger for Option<std::num::$ty> {}
+        impl AtomInteger for Option<core::num::$ty> {}
     };
 }
 
@@ -451,35 +451,35 @@ impl_option_non_zero!(NonZeroIsize = isize);
 ///
 /// assert_impl_atom::<*mut ()>();
 /// assert_impl_atom::<*mut String>();
-/// assert_impl_atom::<std::ptr::NonNull<()>>();
-/// assert_impl_atom::<std::ptr::NonNull<String>>();
-/// assert_impl_atom::<Option<std::ptr::NonNull<()>>>();
-/// assert_impl_atom::<Option<std::ptr::NonNull<String>>>();
+/// assert_impl_atom::<core::ptr::NonNull<()>>();
+/// assert_impl_atom::<core::ptr::NonNull<String>>();
+/// assert_impl_atom::<Option<core::ptr::NonNull<()>>>();
+/// assert_impl_atom::<Option<core::ptr::NonNull<String>>>();
 ///
 /// assert_impl_atom::<char>();
 /// assert_impl_atom::<f32>();
 /// assert_impl_atom::<f64>();
 ///
-/// assert_impl_atom::<std::num::NonZeroU8>();
-/// assert_impl_atom::<std::num::NonZeroI8>();
-/// assert_impl_atom::<std::num::NonZeroU16>();
-/// assert_impl_atom::<std::num::NonZeroI16>();
-/// assert_impl_atom::<std::num::NonZeroU32>();
-/// assert_impl_atom::<std::num::NonZeroI32>();
-/// assert_impl_atom::<std::num::NonZeroU64>();
-/// assert_impl_atom::<std::num::NonZeroI64>();
-/// assert_impl_atom::<std::num::NonZeroUsize>();
-/// assert_impl_atom::<std::num::NonZeroIsize>();
+/// assert_impl_atom::<core::num::NonZeroU8>();
+/// assert_impl_atom::<core::num::NonZeroI8>();
+/// assert_impl_atom::<core::num::NonZeroU16>();
+/// assert_impl_atom::<core::num::NonZeroI16>();
+/// assert_impl_atom::<core::num::NonZeroU32>();
+/// assert_impl_atom::<core::num::NonZeroI32>();
+/// assert_impl_atom::<core::num::NonZeroU64>();
+/// assert_impl_atom::<core::num::NonZeroI64>();
+/// assert_impl_atom::<core::num::NonZeroUsize>();
+/// assert_impl_atom::<core::num::NonZeroIsize>();
 ///
-/// assert_impl_atom_logic::<std::num::Wrapping<u8>>();
-/// assert_impl_atom_logic::<std::num::Wrapping<i8>>();
-/// assert_impl_atom_logic::<std::num::Wrapping<u16>>();
-/// assert_impl_atom_logic::<std::num::Wrapping<i16>>();
-/// assert_impl_atom_logic::<std::num::Wrapping<u32>>();
-/// assert_impl_atom_logic::<std::num::Wrapping<i32>>();
-/// assert_impl_atom_logic::<std::num::Wrapping<u64>>();
-/// assert_impl_atom_logic::<std::num::Wrapping<i64>>();
-/// assert_impl_atom_logic::<std::num::Wrapping<usize>>();
-/// assert_impl_atom_logic::<std::num::Wrapping<isize>>();
+/// assert_impl_atom_logic::<core::num::Wrapping<u8>>();
+/// assert_impl_atom_logic::<core::num::Wrapping<i8>>();
+/// assert_impl_atom_logic::<core::num::Wrapping<u16>>();
+/// assert_impl_atom_logic::<core::num::Wrapping<i16>>();
+/// assert_impl_atom_logic::<core::num::Wrapping<u32>>();
+/// assert_impl_atom_logic::<core::num::Wrapping<i32>>();
+/// assert_impl_atom_logic::<core::num::Wrapping<u64>>();
+/// assert_impl_atom_logic::<core::num::Wrapping<i64>>();
+/// assert_impl_atom_logic::<core::num::Wrapping<usize>>();
+/// assert_impl_atom_logic::<core::num::Wrapping<isize>>();
 /// ```
 mod tests {}
