@@ -72,6 +72,7 @@
 //!     `Atomic<T>` if `T` is serializable or deserializable.
 //!
 
+#![forbid(unsafe_code)]
 #![no_std]
 
 #[cfg(test)]
