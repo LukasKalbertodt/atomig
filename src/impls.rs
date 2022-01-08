@@ -8,7 +8,9 @@
 //! them for your own types.
 
 use core::{num::Wrapping, sync::atomic::{self, Ordering}};
-use super::{Atom, AtomLogic, AtomInteger};
+
+#[allow(unused_imports)]
+use super::{Atom, AtomCas, AtomLogic, AtomInteger};
 
 
 // ===============================================================================================
@@ -42,7 +44,14 @@ pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
     fn load(imp: &Self::Impl, order: Ordering) -> Self;
     #[doc(hidden)]
     fn store(imp: &Self::Impl, v: Self, order: Ordering);
+}
 
+/// Atomic types from `std::sync::atomic` which support CAS operations.
+///
+/// You cannot implement this trait for your own types; see [`AtomCas`]
+/// instead. This trait's items are not part of the public API -- see the
+/// module docs.
+pub trait PrimitiveAtomCas: PrimitiveAtom {
     #[doc(hidden)]
     fn swap(imp: &Self::Impl, v: Self, order: Ordering) -> Self;
 
@@ -126,7 +135,7 @@ macro_rules! id_pack_unpack {
     };
 }
 
-/// Expands to all methods from `AtomicImpl`, each forwarding to
+/// Expands to all methods from `PrimitiveAtom`, each forwarding to
 /// `self.that_method`.
 macro_rules! pass_through_methods {
     ($ty:ty) => {
@@ -154,7 +163,14 @@ macro_rules! pass_through_methods {
         fn store(imp: &Self::Impl, v: Self, order: Ordering) {
             imp.store(v, order)
         }
+    };
+}
 
+/// Expands to all methods from `PrimitiveAtomCas`, each forwarding to
+/// `self.that_method`.
+#[allow(unused_macros)]
+macro_rules! cas_pass_through_methods {
+    () => {
         #[inline(always)]
         fn swap(imp: &Self::Impl, v: Self, order: Ordering) -> Self {
             imp.swap(v, order)
@@ -196,8 +212,9 @@ macro_rules! pass_through_methods {
     };
 }
 
-/// Expands to all methods from `AtomicLogicImpl`, each forwarding to
+/// Expands to all methods from `PrimitiveAtomLogic`, each forwarding to
 /// `self.that_method`.
+#[allow(unused_macros)]
 macro_rules! logical_pass_through_methods {
     () => {
         #[inline(always)]
@@ -222,8 +239,9 @@ macro_rules! logical_pass_through_methods {
     };
 }
 
-/// Expands to all methods from `AtomicIntegerImpl`, each forwarding to
+/// Expands to all methods from `PrimitiveAtomInteger`, each forwarding to
 /// `self.that_method`.
+#[allow(unused_macros)]
 macro_rules! integer_pass_through_methods {
     () => {
         #[inline(always)]
@@ -247,47 +265,95 @@ macro_rules! integer_pass_through_methods {
 }
 
 // ----- `*mut T` and `AtomicPtr` -----
+#[cfg(feature = "atomic_ptr")]
 impl<T> Atom for *mut T {
     type Repr = Self;
     id_pack_unpack!();
 }
 
 impl<T> sealed::Sealed for *mut T {}
+#[cfg(feature = "atomic_ptr")]
 impl<T> PrimitiveAtom for *mut T {
     type Impl = atomic::AtomicPtr<T>;
     pass_through_methods!(atomic::AtomicPtr<T>);
 }
 
+#[cfg(feature = "atomic_cas_ptr")]
+impl<T> PrimitiveAtomCas for *mut T {
+    cas_pass_through_methods!();
+}
 
 
-// ----- Integers and `bool` -----
+// ----- `bool` and `AtomicBool` -----
+#[cfg(feature = "atomic_8")]
+impl Atom for bool {
+    type Repr = Self;
+    id_pack_unpack!();
+}
 
-macro_rules! impl_std_atomics {
-    ($ty:ty, $non_zero_ty:ident, $impl_ty:ident, $is_int:ident) => {
-        impl Atom for $ty {
-            type Repr = Self;
-            id_pack_unpack!();
-        }
+impl sealed::Sealed for bool {}
+#[cfg(feature = "atomic_cas_8")]
+impl AtomCas for bool {}
+#[cfg(feature = "atomic_cas_8")]
+impl AtomLogic for bool {}
+#[cfg(feature = "atomic_8")]
+impl PrimitiveAtom for bool {
+    type Impl = atomic::AtomicBool;
+    pass_through_methods!(atomic::AtomicBool);
+}
+#[cfg(feature = "atomic_cas_8")]
+impl PrimitiveAtomCas for bool {
+    cas_pass_through_methods!();
+}
+#[cfg(feature = "atomic_cas_8")]
+impl PrimitiveAtomLogic for bool {
+    logical_pass_through_methods!();
+}
 
+
+// ----- Integers -----
+
+macro_rules! impl_int_atomics {
+    ($ty:ty, $non_zero_ty:ident, $impl_ty:ident, $cfg_atomic:expr, $cfg_cas:expr) => {
+
+        // ----- Primitive for integer -----
         impl sealed::Sealed for $ty {}
-        impl AtomLogic for $ty {}
+
+        #[cfg(feature = $cfg_atomic)]
         impl PrimitiveAtom for $ty {
             type Impl = atomic::$impl_ty;
             pass_through_methods!(atomic::$impl_ty);
         }
-
+        #[cfg(feature = $cfg_cas)]
+        impl PrimitiveAtomCas for $ty {
+            cas_pass_through_methods!();
+        }
+        #[cfg(feature = $cfg_cas)]
         impl PrimitiveAtomLogic for $ty {
             logical_pass_through_methods!();
         }
-
-        impl_std_atomics!(@int_methods $ty, $non_zero_ty, $impl_ty, $is_int);
-    };
-    (@int_methods $ty:ty, $non_zero_ty:ident, $impl_ty:ident, true) => {
-        impl AtomInteger for $ty {}
+        #[cfg(feature = $cfg_cas)]
         impl PrimitiveAtomInteger for $ty {
             integer_pass_through_methods!();
         }
 
+
+        // ----- Atom for integer -----
+        #[cfg(feature = $cfg_atomic)]
+        impl Atom for $ty {
+            type Repr = Self;
+            id_pack_unpack!();
+        }
+        #[cfg(feature = $cfg_cas)]
+        impl AtomCas for $ty {}
+        #[cfg(feature = $cfg_cas)]
+        impl AtomLogic for $ty {}
+        #[cfg(feature = $cfg_cas)]
+        impl AtomInteger for $ty {}
+
+
+        // ----- Atom for `NonZero*` -----
+        #[cfg(feature = $cfg_atomic)]
         impl Atom for core::num::$non_zero_ty {
             type Repr = $ty;
             fn pack(self) -> Self::Repr {
@@ -301,23 +367,45 @@ macro_rules! impl_std_atomics {
                 Self::new(src).expect("zero value in `Atom::unpack` for NonZero type")
             }
         }
+        #[cfg(feature = $cfg_cas)]
+        impl AtomCas for core::num::$non_zero_ty {}
+
+
+        // ----- Atom for `Option<NonZero*>` -----
+        #[cfg(feature = $cfg_atomic)]
+        impl Atom for Option<core::num::$non_zero_ty> {
+            type Repr = $ty;
+            fn pack(self) -> Self::Repr {
+                self.map(core::num::$non_zero_ty::get).unwrap_or(0).pack()
+            }
+            fn unpack(src: Self::Repr) -> Self {
+                core::num::$non_zero_ty::new(src)
+            }
+        }
+        #[cfg(feature = $cfg_cas)]
+        impl AtomCas for Option<core::num::$non_zero_ty> {}
+        // Semantically, an `Option<NonZeroFoo>` represents `Foo` exactly. It
+        // also has the exact same memory layout. It's just that we assign
+        // the "symbol" `None` to 0. Any integer operation that leads to 0 on
+        // the underlying type will result in `None`.
+        #[cfg(feature = $cfg_cas)]
+        impl AtomInteger for Option<core::num::$non_zero_ty> {}
     };
-    (@int_methods $ty:ty, $non_zero_ty:ident, $impl_ty:ident, false) => {};
 }
 
-impl_std_atomics!(bool, _Dummy, AtomicBool, false);
-impl_std_atomics!(u8, NonZeroU8, AtomicU8, true);
-impl_std_atomics!(i8, NonZeroI8, AtomicI8, true);
-impl_std_atomics!(u16, NonZeroU16, AtomicU16, true);
-impl_std_atomics!(i16, NonZeroI16, AtomicI16, true);
-impl_std_atomics!(u32, NonZeroU32, AtomicU32, true);
-impl_std_atomics!(i32, NonZeroI32, AtomicI32, true);
-impl_std_atomics!(u64, NonZeroU64, AtomicU64, true);
-impl_std_atomics!(i64, NonZeroI64, AtomicI64, true);
-impl_std_atomics!(usize, NonZeroUsize, AtomicUsize, true);
-impl_std_atomics!(isize, NonZeroIsize, AtomicIsize, true);
+impl_int_atomics!(u8, NonZeroU8, AtomicU8, "atomic_8", "atomic_cas_8");
+impl_int_atomics!(i8, NonZeroI8, AtomicI8, "atomic_8", "atomic_cas_8");
+impl_int_atomics!(u16, NonZeroU16, AtomicU16, "atomic_16", "atomic_cas_16");
+impl_int_atomics!(i16, NonZeroI16, AtomicI16, "atomic_16", "atomic_cas_16");
+impl_int_atomics!(u32, NonZeroU32, AtomicU32, "atomic_32", "atomic_cas_32");
+impl_int_atomics!(i32, NonZeroI32, AtomicI32, "atomic_32", "atomic_cas_32");
+impl_int_atomics!(u64, NonZeroU64, AtomicU64, "atomic_64", "atomic_cas_64");
+impl_int_atomics!(i64, NonZeroI64, AtomicI64, "atomic_64", "atomic_cas_64");
+impl_int_atomics!(usize, NonZeroUsize, AtomicUsize, "atomic_ptr", "atomic_cas_ptr");
+impl_int_atomics!(isize, NonZeroIsize, AtomicIsize, "atomic_ptr", "atomic_cas_ptr");
 
 // ----- Implementations for non-atomic primitive types ------------------------------------------
+#[cfg(feature = "atomic_32")]
 impl Atom for f32 {
     type Repr = u32;
     fn pack(self) -> Self::Repr {
@@ -328,6 +416,10 @@ impl Atom for f32 {
     }
 }
 
+#[cfg(feature = "atomic_cas_32")]
+impl AtomCas for f32 {}
+
+#[cfg(feature = "atomic_64")]
 impl Atom for f64 {
     type Repr = u64;
     fn pack(self) -> Self::Repr {
@@ -338,6 +430,10 @@ impl Atom for f64 {
     }
 }
 
+#[cfg(feature = "atomic_cas_64")]
+impl AtomCas for f64 {}
+
+#[cfg(feature = "atomic_32")]
 impl Atom for char {
     type Repr = u32;
     fn pack(self) -> Self::Repr {
@@ -348,6 +444,9 @@ impl Atom for char {
         Self::try_from(src).expect("invalid value in <char as Atom>::unpack")
     }
 }
+
+#[cfg(feature = "atomic_cas_32")]
+impl AtomCas for char {}
 
 // We do not implement `AtomInteger` as, to me, it seems like the exact adding
 // and subtraction behavior of integer atomics is not defined anywhere.
@@ -360,9 +459,11 @@ impl<T: Atom> Atom for Wrapping<T> {
         Self(T::unpack(src))
     }
 }
+impl<T: AtomCas> AtomCas for Wrapping<T> where T::Repr: PrimitiveAtomCas {}
 impl<T: AtomLogic> AtomLogic for Wrapping<T> where T::Repr: PrimitiveAtomLogic {}
 
 
+#[cfg(feature = "atomic_ptr")]
 impl<T> Atom for core::ptr::NonNull<T> {
     type Repr = *mut T;
     fn pack(self) -> Self::Repr {
@@ -374,6 +475,10 @@ impl<T> Atom for core::ptr::NonNull<T> {
     }
 }
 
+#[cfg(feature = "atomic_cas_ptr")]
+impl<T> AtomCas for core::ptr::NonNull<T> {}
+
+#[cfg(feature = "atomic_ptr")]
 impl<T> Atom for Option<core::ptr::NonNull<T>> {
     type Repr = *mut T;
     fn pack(self) -> Self::Repr {
@@ -390,36 +495,8 @@ impl<T> Atom for Option<core::ptr::NonNull<T>> {
     }
 }
 
-macro_rules! impl_option_non_zero {
-    ($ty:ident = $repr:ty) => {
-        impl Atom for Option<core::num::$ty> {
-            type Repr = $repr;
-            fn pack(self) -> Self::Repr {
-                self.map(core::num::$ty::get).unwrap_or(0).pack()
-            }
-            fn unpack(src: Self::Repr) -> Self {
-                core::num::$ty::new(src)
-            }
-        }
-
-        // Semantically, an `Option<NonZeroFoo>` represents `Foo` exactly. It
-        // also has the exact same memory layout. It's just that we assign
-        // the "symbol" `None` to 0. Any integer operation that leads to 0 on
-        // the underlying type will result in `None`.
-        impl AtomInteger for Option<core::num::$ty> {}
-    };
-}
-
-impl_option_non_zero!(NonZeroU8 = u8);
-impl_option_non_zero!(NonZeroI8 = i8);
-impl_option_non_zero!(NonZeroU16 = u16);
-impl_option_non_zero!(NonZeroI16 = i16);
-impl_option_non_zero!(NonZeroU32 = u32);
-impl_option_non_zero!(NonZeroI32 = i32);
-impl_option_non_zero!(NonZeroU64 = u64);
-impl_option_non_zero!(NonZeroI64 = i64);
-impl_option_non_zero!(NonZeroUsize = usize);
-impl_option_non_zero!(NonZeroIsize = isize);
+#[cfg(feature = "atomic_cas_ptr")]
+impl<T> AtomCas for Option<core::ptr::NonNull<T>> {}
 
 /// This is just a dummy module to have doc tests.
 ///

@@ -21,6 +21,17 @@ travis-ci = { repository = "LukasKalbertodt/atomig" }
 
 
 [features]
+atomic_ptr = []
+atomic_8 = ["atomic_ptr"]
+atomic_16 = ["atomic_8"]
+atomic_32 = ["atomic_16"]
+atomic_64 = ["atomic_32"]
+atomic_cas_ptr = ["atomic_ptr"]
+atomic_cas_8 = ["atomic_cas_ptr", "atomic_8"]
+atomic_cas_16 = ["atomic_cas_8", "atomic_16"]
+atomic_cas_32 = ["atomic_cas_16", "atomic_32"]
+atomic_cas_64 = ["atomic_cas_32", "atomic_64"]
+default = ["atomic_cas_64"]
 derive = ["atomig-macro"]
 
 [dependencies]

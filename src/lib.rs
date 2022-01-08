@@ -80,7 +80,7 @@
 extern crate std;
 
 use core::fmt;
-use crate::impls::{PrimitiveAtom, PrimitiveAtomLogic, PrimitiveAtomInteger};
+use crate::impls::{PrimitiveAtom, PrimitiveAtomCas, PrimitiveAtomLogic, PrimitiveAtomInteger};
 
 pub mod impls;
 #[cfg(test)]
@@ -210,6 +210,11 @@ pub trait Atom {
     /// unsafety)!
     fn unpack(src: Self::Repr) -> Self;
 }
+
+pub trait AtomCas: Atom
+where
+    Self::Repr: PrimitiveAtomCas,
+{}
 
 /// `Atom`s for which logical operations on their atomic representation make
 /// sense.
@@ -395,7 +400,12 @@ impl<T: Atom> Atomic<T> {
     pub fn store(&self, v: T, order: Ordering) {
         T::Repr::store(&self.0, v.pack(), order);
     }
+}
 
+impl<T: AtomCas> Atomic<T>
+where
+    T::Repr: PrimitiveAtomCas,
+{
     /// Stores a value into the atomic, returning the previous value.
     ///
     /// `swap` takes an [`Ordering`] argument which describes the memory
