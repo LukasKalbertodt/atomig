@@ -2,7 +2,7 @@
 name = "atomig-macro"
 version = "0.2.0"
 authors = ["Lukas Kalbertodt <lukas.kalbertodt@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 description = """
 Defines procedural macros for the crate `atomig`. Please see the main crate.

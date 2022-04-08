@@ -344,7 +344,6 @@ impl Atom for char {
         self.into()
     }
     fn unpack(src: Self::Repr) -> Self {
-        use core::convert::TryFrom;
         Self::try_from(src).expect("invalid value in <char as Atom>::unpack")
     }
 }

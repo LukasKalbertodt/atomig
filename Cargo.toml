@@ -2,7 +2,7 @@
 name = "atomig"
 version = "0.3.3"
 authors = ["Lukas Kalbertodt <lukas.kalbertodt@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 description = """
 Generic and convenient `std` atomics via `Atomic<T>`. Can be used with many
