@@ -132,7 +132,7 @@ fn atom_impl_for_enum(input: &DeriveInput, e: &DataEnum) -> Result<TokenStream2,
     // Make sure we have a `repr` attribute on the enum.
     let repr_attr = input.attrs.iter()
         .filter_map(|attr| attr.parse_meta().ok())
-        .find(|meta| meta.name() == "repr")
+        .find(|meta| meta.path().is_ident("repr"))
         .ok_or_else(|| {
             let msg = format!(
                 "no `repr(_)` attribute on enum '{}', but such an attribute is \
@@ -153,9 +153,9 @@ fn atom_impl_for_enum(input: &DeriveInput, e: &DataEnum) -> Result<TokenStream2,
             list.nested.iter()
                 .find_map(|nested| {
                     match &nested {
-                        NestedMeta::Meta(Meta::Word(w))
-                            if INTEGER_NAMES.contains(&&*w.to_string()) => Some(w),
-                        _ => None
+                        NestedMeta::Meta(Meta::Path(p)) => p.get_ident()
+                            .filter(|ident| INTEGER_NAMES.iter().any(|int| ident == int)),
+                        _ => return None,
                     }
                 })
                 .ok_or_else(|| {
