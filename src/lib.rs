@@ -206,7 +206,7 @@ pub trait Atom {
     /// If your type also implements `AtomLogic` or `AtomInteger`, results of
     /// those operations might get passed to `unpack`. Furthermore, this method
     /// can be called by anyone. So at the very least, you have to make sure
-    /// that invalid input values do not lead to undefined behavior(e.g. memory
+    /// that invalid input values do not lead to undefined behavior (e.g. memory
     /// unsafety)!
     fn unpack(src: Self::Repr) -> Self;
 }
