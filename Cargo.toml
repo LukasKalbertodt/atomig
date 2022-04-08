@@ -16,9 +16,6 @@ license = "MIT/Apache-2.0"
 keywords = ["atomic", "atom", "ordering", "cas", "generic"]
 categories = ["concurrency", "hardware-support", "no-std"]
 
-[badges]
-travis-ci = { repository = "LukasKalbertodt/atomig" }
-
 
 [features]
 derive = ["atomig-macro"]
