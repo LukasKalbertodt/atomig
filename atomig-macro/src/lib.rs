@@ -114,8 +114,6 @@ fn atom_impl_for_struct(s: &DataStruct) -> Result<TokenStream2, Error> {
 
     let field_type = &field.ty;
     Ok(quote! {
-        // TODO: this line should have the span of the field once
-        // https://github.com/rust-lang/rust/issues/41817 is fixed
         type Repr = #field_type;
 
         fn pack(self) -> Self::Repr {
