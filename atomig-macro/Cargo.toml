@@ -1,11 +1,12 @@
 [package]
 name = "atomig-macro"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Lukas Kalbertodt <lukas.kalbertodt@gmail.com>"]
 edition = "2021"
 
 description = """
-Defines procedural macros for the crate `atomig`. Please see the main crate.
+Helper crate for `atomig`. Do not use directly, but only through main crate.
+This helper does not follow semantic versioning!
 """
 repository = "https://github.com/LukasKalbertodt/atomig/"
 license = "MIT/Apache-2.0"
