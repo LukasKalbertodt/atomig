@@ -105,7 +105,7 @@ fn atom_impl_for_struct(s: &DataStruct) -> Result<TokenStream2, Error> {
         return Err(Error::new(s.fields.span(), msg));
     }
 
-    // Generate the code for `pack` and `unpack` which depends on weather it is
+    // Generate the code for `pack` and `unpack` which depends on whether it is
     // a named or tuple-struct field.
     let (field_access, struct_init) = match &field.ident {
         Some(name) => (quote! { self.#name }, quote! { Self { #name: src } }),
@@ -114,12 +114,13 @@ fn atom_impl_for_struct(s: &DataStruct) -> Result<TokenStream2, Error> {
 
     let field_type = &field.ty;
     Ok(quote! {
-        type Repr = #field_type;
+        type Repr = <#field_type as atomig::Atom>::Repr;
 
         fn pack(self) -> Self::Repr {
-            #field_access
+            <#field_type as atomig::Atom>::pack(#field_access)
         }
         fn unpack(src: Self::Repr) -> Self {
+            let src = <#field_type as atomig::Atom>::unpack(src);
             #struct_init
         }
     })

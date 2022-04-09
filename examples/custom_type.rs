@@ -2,6 +2,7 @@
 //! deriving `Atom`.
 
 use std::{
+    num::NonZeroU16,
     sync::Arc,
     thread,
     time::Duration,
@@ -20,6 +21,9 @@ enum Animal {
 #[derive(Debug, PartialEq, Atom, AtomLogic)]
 struct BitSet(u16);
 
+// The inner type only has to implement `Atom`, not `PrimitiveAtom`.
+#[derive(Debug, PartialEq, Atom)]
+struct Port(NonZeroU16);
 
 fn main() {
     // Example with `Animal`

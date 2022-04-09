@@ -163,8 +163,7 @@ pub use atomig_macro::{Atom, AtomInteger, AtomLogic};
 ///
 /// The trait can be automatically derived for two kinds of types:
 /// - `struct` types with only *one* field. That field's type has to implement
-///   `PrimitiveAtom` and is used as `Repr` type. Works with tuple structs or
-///   normal structs with named fields.
+///   `Atom`. Works with tuple structs or normal structs with one named field.
 /// - `enum` types that have a `#[repr(_)]` attribute specified and are C-like
 ///   (i.e. no variant has any fields). The primitive type specified in the
 ///   `#[repr(_)]` attribute is used as `Repr` type.
