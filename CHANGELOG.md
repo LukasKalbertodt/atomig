@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.4.0] - 2022-04-09
+### Changed
+- **Breaking**: the minimal supported Rust version (MSRV) is now 1.60
+
+- Use `cfg(target_has_atomic)` to conditionally disable some impls. Previously,
+  the whole crate just failed to compile on targets like `thumbv7em-none-eabi`,
+  as `AtomicU64` is not available there. Now it compiles, but there is no
+  `Atom` impl for `u64` or `f64`, for example. This is not yet an optimal
+  solution, as platform support for atomics is not just differentiated by size,
+  but also by whether they support some features. Sadly, for those, there are
+  no `cfg` flags available on stable yet.
+
+- Relax `derive` for structs by only requiring `Atom` for the inner field, not
+  `PrimitiveAtom`.
+
+- Derive macro uses `syn`, `quote` and `proc-macro2` in version 1.x now. This is
+  semantically irrelevant for you, but might remove the pre-1.x versions of
+  these crates from your dependency graph if atomig was the last to use them.
+
+
 ## [0.3.3] - 2021-12-30
 ### Changed
 - This library is now `no_std` compatible. All paths to `std` items were replaced by `core`.
