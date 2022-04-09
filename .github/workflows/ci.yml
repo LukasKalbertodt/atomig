@@ -27,3 +27,6 @@ jobs:
     - run: cargo build --features="derive serde"
     - run: cargo test --features="derive serde"
     - run: cargo doc --features="derive serde"
+
+    - run: rustup target add thumbv7em-none-eabi
+    - run: cargo build --target=thumbv7em-none-eabi
