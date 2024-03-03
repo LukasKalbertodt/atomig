@@ -1,7 +1,7 @@
 Atomig: generic and convenient `std` atomics
 ============================================
 
-[<img alt="CI status of master" src="https://img.shields.io/github/workflow/status/LukasKalbertodt/atomig/CI/master?label=CI&logo=github&logoColor=white&style=for-the-badge" height="23">](https://github.com/LukasKalbertodt/atomig/actions?query=workflow%3ACI+branch%3Amaster)
+[<img alt="CI status of master" src="https://img.shields.io/github/actions/workflow/status/LukasKalbertodt/atomig/ci.yml?branch=master&label=CI&logo=github&logoColor=white&style=for-the-badge" height="23">](https://github.com/LukasKalbertodt/atomig/actions/workflows/ci.yml)
 [<img alt="Crates.io Version" src="https://img.shields.io/crates/v/atomig?logo=rust&style=for-the-badge" height="23">](https://crates.io/crates/atomig)
 [<img alt="docs.rs" src="https://img.shields.io/crates/v/atomig?color=blue&label=docs&style=for-the-badge" height="23">](https://docs.rs/atomig)
 
