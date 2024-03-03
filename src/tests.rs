@@ -160,6 +160,26 @@ gen_tests_for_primitives!(_f32,   f32,   7.0f32, 33.0f32, [n n]);
 gen_tests_for_primitives!(_f64,   f64,   7.0f64, 33.0f64, [n n]);
 gen_tests_for_primitives!(_char,  char,  'x',    '♥',     [n n]);
 
+// Arrays. They do implement `AtomLogic` but the logic tests don't work with them.
+//                        mod          ty        val0    val1     [logic int]
+gen_tests_for_primitives!(_u8array2,   [u8; 2],  [3u8, 79], [17u8, 240], [n n]);
+gen_tests_for_primitives!(_u8array4,   [u8; 4],  [3u8, 79, 13, 230], [17u8, 240, 59, 184], [n n]);
+gen_tests_for_primitives!(_u8array8,   [u8; 8],  [3u8, 79, 13, 230, 4, 80, 14, 231],
+    [17u8, 240, 59, 184, 18, 241, 60, 185], [n n]);
+gen_tests_for_primitives!(_u16array2,  [u16; 2], [3u16, 257], [17u16, 9999], [n n]);
+gen_tests_for_primitives!(_u16array4,  [u16; 4], [3u16, 257, 13, 230],
+    [17u16, 9999, 59, 17003], [n n]);
+gen_tests_for_primitives!(_u32array2,  [u32; 2], [3u32, 77977], [17u32, 190247], [n n]);
+gen_tests_for_primitives!(_i8array2,   [i8; 2],  [3i8, -79], [-17i8, 113], [n n]);
+gen_tests_for_primitives!(_i8array4,   [i8; 4],  [3i8, -79, 13, -120],
+    [-17i8, 113, -59, -98], [n n]);
+gen_tests_for_primitives!(_i8array8,   [i8; 8],  [3i8, -79, 13, -120, 4, 80, -14, 111],
+    [-17i8, 113, -59, -98, -18, 114, 60, -128], [n n]);
+gen_tests_for_primitives!(_i16array2,  [i16; 2], [3i16, -257], [17i16, -9999], [n n]);
+gen_tests_for_primitives!(_i16array4,  [i16; 4], [3i16, -257, 13, 230],
+        [17i16, -9999, -59, 17003], [n n]);
+gen_tests_for_primitives!(_i32array2,  [i32; 2], [3i32, -77977], [-17i32, 190247], [n n]);
+
 mod _ptr {
     use super::*;
     generic_tests!(Foo, Foo::Nothing, Foo::Set(0b101));

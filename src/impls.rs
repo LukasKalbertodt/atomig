@@ -429,6 +429,58 @@ macro_rules! impl_option_non_zero {
 #[cfg(target_has_atomic = "ptr")] impl_option_non_zero!(NonZeroUsize = usize);
 #[cfg(target_has_atomic = "ptr")] impl_option_non_zero!(NonZeroIsize = isize);
 
+macro_rules! impl_int8_arrays {
+    ($elem:ident, $len:literal, $repr:ident) => {
+        impl Atom for [$elem; $len] {
+            type Repr = $repr;
+            fn pack(self) -> Self::Repr {
+                $repr::from_ne_bytes(self.map(|e| e as _))
+            }
+            fn unpack(src: Self::Repr) -> Self {
+                src.to_ne_bytes().map(|e| e as _)
+            }
+        }
+        impl AtomLogic for [$elem; $len] {}
+    };
+}
+
+#[cfg(target_has_atomic = "16")] impl_int8_arrays!(u8, 2, u16);
+#[cfg(target_has_atomic = "32")] impl_int8_arrays!(u8, 4, u32);
+#[cfg(target_has_atomic = "64")] impl_int8_arrays!(u8, 8, u64);
+#[cfg(target_has_atomic = "16")] impl_int8_arrays!(i8, 2, u16);
+#[cfg(target_has_atomic = "32")] impl_int8_arrays!(i8, 4, u32);
+#[cfg(target_has_atomic = "64")] impl_int8_arrays!(i8, 8, u64);
+
+macro_rules! impl_int_arrays {
+    ($unsigned_elem:ident, $signed_elem:ident, $len:literal, $repr:ident, $nested:tt, $flat:tt) => {
+        impl_small_primitive_array!($unsigned_elem, $len, $repr, $nested, $flat);
+        impl_small_primitive_array!($signed_elem, $len, $repr, $nested, $flat);
+    };
+}
+
+macro_rules! impl_small_primitive_array {
+    ($elem:ident, $len:literal, $repr:ident, $nested:tt, $flat:tt) => {
+        impl Atom for [$elem; $len] {
+            type Repr = $repr;
+            fn pack(self) -> Self::Repr {
+                let $nested = self.map(|x| x.to_ne_bytes());
+                Self::Repr::from_ne_bytes($flat)
+            }
+            fn unpack(src: Self::Repr) -> Self {
+                let $flat = src.to_ne_bytes();
+                $nested.map($elem::from_ne_bytes)
+            }
+        }
+        impl AtomLogic for [$elem; $len] {}
+    };
+}
+#[cfg(target_has_atomic = "32")] impl_int_arrays!(u16, i16, 2, u32,
+    [[b0, b1], [b2, b3]], [b0, b1, b2, b3]);
+#[cfg(target_has_atomic = "64")] impl_int_arrays!(u16, i16, 4, u64,
+    [[b0, b1], [b2, b3], [b4, b5], [b6, b7]], [b0, b1, b2, b3, b4, b5, b6, b7]);
+#[cfg(target_has_atomic = "64")] impl_int_arrays!(u32, i32, 2, u64,
+    [[b0, b1, b2, b3], [b4, b5, b6, b7]], [b0, b1, b2, b3, b4, b5, b6, b7]);
+
 /// This is just a dummy module to have doc tests.
 ///
 /// ```
@@ -467,6 +519,19 @@ macro_rules! impl_option_non_zero {
 /// assert_impl_atom::<char>();
 /// assert_impl_atom::<f32>();
 /// assert_impl_atom::<f64>();
+///
+/// assert_impl_atom::<[u8; 2]>();
+/// assert_impl_atom::<[u8; 4]>();
+/// assert_impl_atom::<[u8; 8]>();
+/// assert_impl_atom::<[i8; 2]>();
+/// assert_impl_atom::<[i8; 4]>();
+/// assert_impl_atom::<[i8; 8]>();
+/// assert_impl_atom::<[u16; 2]>();
+/// assert_impl_atom::<[u16; 4]>();
+/// assert_impl_atom::<[i16; 2]>();
+/// assert_impl_atom::<[i16; 4]>();
+/// assert_impl_atom::<[u32; 2]>();
+/// assert_impl_atom::<[i32; 2]>();
 ///
 /// assert_impl_atom::<core::num::NonZeroU8>();
 /// assert_impl_atom::<core::num::NonZeroI8>();
