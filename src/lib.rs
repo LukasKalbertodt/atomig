@@ -341,6 +341,26 @@ impl<T: Atom> Atomic<T> {
         Self(T::Repr::into_impl(v.pack()))
     }
 
+    /// Creates a new atomic value from the underlying `Atomic*` type from `std`.
+    ///
+    /// Since [`Atom`] is a `trait` and `const fn`s in `trait`s are not supported yet,
+    /// the only way for this to be a `const fn` is
+    /// to take the underyling atomic impl type directly.
+    ///
+    /// This allows `static` `Atomic`s to be created.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use atomig::Atomic;
+    /// use std::sync::atomic::AtomicU32;
+    ///
+    /// static X: Atomic<u32> = Atomic::from_impl(AtomicU32::new(7));
+    /// ```
+    pub const fn from_impl(v: <<T as Atom>::Repr as PrimitiveAtom>::Impl) -> Self {
+        Self(v)
+    }
+
     /// Consumes the atomic and returns the contained value.
     ///
     /// This is safe because passing `self` by value guarantees that no other
