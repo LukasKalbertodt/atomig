@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.4.1] - 2024-03-04
+- Add const fn `Atomic::from_impl` to allow creating `static` `Atomic`s [#11](https://github.com/LukasKalbertodt/atomig/pull/11)
+- Add `Atom` & `AtomLogic` impl for small, pow2-sized integer arrays [#12](https://github.com/LukasKalbertodt/atomig/pull/12)
+- Fix CI badge in README
+
 ## [0.4.0] - 2022-04-09
 ### Changed
 - **Breaking**: the minimal supported Rust version (MSRV) is now 1.60
@@ -76,7 +81,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Everything.
 
 
-[Unreleased]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/LukasKalbertodt/atomig/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/LukasKalbertodt/atomig/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/LukasKalbertodt/atomig/compare/v0.3.1...v0.3.2
