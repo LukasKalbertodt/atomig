@@ -1,11 +1,7 @@
-//! Traits for abstracting over `std` atomics. Basically implementation detail!
+//! Traits for abstracting over `std` atomics. Mostly hidden implementation detail.
 //!
-//! This module only promises stability about the trait names and which types
-//! these traits are implemented by (though, new impls can be added at any
-//! time, of course). In particular, the traits' methods and other items are
-//! not part of the public API of `atomig`. Those items are also hidden in the
-//! documentation. And the traits are sealed anyway, so you can't implement
-//! them for your own types.
+//! Most items of these traits are hidden and not part of the public API of this library.
+//! You cannot implement these traits yourself.
 
 use core::{num::Wrapping, sync::atomic::{self, Ordering}};
 use super::{Atom, AtomLogic, AtomInteger};
@@ -28,7 +24,6 @@ mod sealed {
 /// the public API -- see the module docs.
 pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
     /// The standard library type that is the atomic version of `Self`.
-    #[doc(hidden)]
     type Impl;
 
     #[doc(hidden)]
