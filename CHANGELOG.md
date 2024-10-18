@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.4.2] - 2024-10-18
+- Add `Send + Sync + Unpin` bound to `PrimitiveAtom::Impl`.
+  As a consequence, these traits are now implemented for `Atomic<T>` unconditionally.
+  ([#14](https://github.com/LukasKalbertodt/atomig/issues/14))
+
 ## [0.4.1] - 2024-03-04
 - Add const fn `Atomic::from_impl` to allow creating `static` `Atomic`s [#11](https://github.com/LukasKalbertodt/atomig/pull/11)
 - Add `Atom` & `AtomLogic` impl for small, pow2-sized integer arrays [#12](https://github.com/LukasKalbertodt/atomig/pull/12)
@@ -81,7 +86,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Everything.
 
 
-[Unreleased]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/LukasKalbertodt/atomig/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/LukasKalbertodt/atomig/compare/v0.3.2...v0.3.3
