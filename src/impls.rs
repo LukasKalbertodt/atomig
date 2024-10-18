@@ -24,7 +24,7 @@ mod sealed {
 /// the public API -- see the module docs.
 pub trait PrimitiveAtom: Sized + Copy + sealed::Sealed {
     /// The standard library type that is the atomic version of `Self`.
-    type Impl;
+    type Impl: Send + Sync + Unpin;
 
     #[doc(hidden)]
     fn into_impl(self) -> Self::Impl;

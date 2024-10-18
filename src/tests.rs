@@ -263,3 +263,9 @@ gen_tests_for_opt_non_zeroes!(nz_u64,   NonZeroU64);
 gen_tests_for_opt_non_zeroes!(nz_i64,   NonZeroI64);
 gen_tests_for_opt_non_zeroes!(nz_usize, NonZeroUsize);
 gen_tests_for_opt_non_zeroes!(nz_isize, NonZeroIsize);
+
+fn _atomic_is_always_send_sync<T: Atom>(a: Atomic<T>) {
+    fn requires_send_sync<X: Send + Sync>(_: X) {}
+
+    requires_send_sync(a);
+}
