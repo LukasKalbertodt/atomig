@@ -1,12 +1,9 @@
-extern crate proc_macro;
-
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{
     parse_macro_input, spanned::Spanned, Data, DataEnum, DataStruct, DeriveInput, Error, Fields,
 };
-
 
 /// Custom derive for the `Atom` trait. Please see the trait's documentation
 /// for more information on this derive.
@@ -54,8 +51,7 @@ fn gen_marker_trait_impl(trait_name: &str, input: &DeriveInput) -> Result<TokenS
                 "`{}` cannot be derived for enums as this is almost always incorrect to do. \
                     Please read the documentation of `{}` carefully. If you still think you \
                     want to implement this trait, you have to do it manually.",
-                trait_name,
-                trait_name,
+                trait_name, trait_name,
             );
             Err(Error::new(Span::call_site(), msg))
         }
@@ -107,7 +103,7 @@ fn atom_impl_for_struct(s: &DataStruct) -> Result<TokenStream2, Error> {
     // a named or tuple-struct field.
     let (field_access, struct_init) = match &field.ident {
         Some(name) => (quote! { self.#name }, quote! { Self { #name: src } }),
-        None => (quote! { self.0 }, quote!{ Self(src) }),
+        None => (quote! { self.0 }, quote! { Self(src) }),
     };
 
     let field_type = &field.ty;
@@ -166,13 +162,11 @@ fn atom_impl_for_enum(input: &DeriveInput, e: &DataEnum) -> Result<TokenStream2,
 
     // Check that all variants have no fields. In other words: that the enum is
     // C-like.
-    let variant_with_fields = e.variants.iter().find(|variant| {
-        match variant.fields {
-            Fields::Unit => false,
-            _ => true,
-        }
-    });
-    if let Some(v) = variant_with_fields  {
+    let variant_with_fields = e
+        .variants
+        .iter()
+        .find(|variant| !matches!(variant.fields, Fields::Unit));
+    if let Some(v) = variant_with_fields {
         let msg = "this variant has fields, but `derive(Atom)` only works \
             for C-like enums";
         return Err(Error::new(v.span(), msg));
@@ -186,26 +180,28 @@ fn atom_impl_for_enum(input: &DeriveInput, e: &DataEnum) -> Result<TokenStream2,
     // very hard.
     let type_name = &input.ident;
     let unpack_code = {
-        let checks: Vec<_> = e.variants.iter().map(|variant| {
-            let variant_name = &variant.ident;
-            quote! {
-                if src == #type_name::#variant_name as #repr_type {
-                    return #type_name::#variant_name;
+        let checks: Vec<_> = e
+            .variants
+            .iter()
+            .map(|variant| {
+                let variant_name = &variant.ident;
+                quote! {
+                    if src == #type_name::#variant_name as #repr_type {
+                        return #type_name::#variant_name;
+                    }
                 }
-            }
-        }).collect();
+            })
+            .collect();
 
         let error = format!(
             "invalid '{}' value '{{}}' for enum '{}' in `Atom::unpack`",
-            repr_type,
-            type_name,
+            repr_type, type_name,
         );
         quote! {
             #(#checks)*
             panic!(#error, src);
         }
     };
-
 
     Ok(quote! {
         type Repr = #repr_type;
