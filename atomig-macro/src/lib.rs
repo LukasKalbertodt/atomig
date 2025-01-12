@@ -4,9 +4,7 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{
-    parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Error, Fields,
-    Meta, NestedMeta,
-    spanned::Spanned,
+    parse_macro_input, spanned::Spanned, Data, DataEnum, DataStruct, DeriveInput, Error, Fields,
 };
 
 
@@ -128,51 +126,43 @@ fn atom_impl_for_struct(s: &DataStruct) -> Result<TokenStream2, Error> {
 
 /// Generates the body of the `impl Atom` block for the given enum definition.
 fn atom_impl_for_enum(input: &DeriveInput, e: &DataEnum) -> Result<TokenStream2, Error> {
-    // Make sure we have a `repr` attribute on the enum.
-    let repr_attr = input.attrs.iter()
-        .filter_map(|attr| attr.parse_meta().ok())
-        .find(|meta| meta.path().is_ident("repr"))
-        .ok_or_else(|| {
-            let msg = format!(
-                "no `repr(_)` attribute on enum '{}', but such an attribute is \
-                    required to automatically derive `Atom`",
-                input.ident,
-            );
-            Error::new(Span::call_site(), msg)
-        })?;
-
-    // Make sure the `repr` attribute has the correct syntax and actually
-    // specifies the primitive representation.
     const INTEGER_NAMES: &[&str] = &[
-        "u8", "u16", "u32", "u64", "u128", "usize",
-        "i8", "i16", "i32", "i64", "i128", "isize",
+        "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize",
     ];
-    let repr_type = match &repr_attr {
-        Meta::List(list) => {
-            list.nested.iter()
-                .find_map(|nested| {
-                    match &nested {
-                        NestedMeta::Meta(Meta::Path(p)) => p.get_ident()
-                            .filter(|ident| INTEGER_NAMES.iter().any(|int| ident == int)),
-                        _ => return None,
-                    }
-                })
-                .ok_or_else(|| {
-                    let msg = "`repr(_)` attribute does not specify the primitive \
-                        representation (a primitive integer), but this is required \
-                        for `derive(Atom)`";
-                    Error::new(repr_attr.span(), msg)
-                })?
+
+    let mut repr_type = None;
+    for attr in &input.attrs {
+        // Make sure we have a `repr` attribute on the enum.
+        if attr.path().is_ident("repr") {
+            // Make sure the `repr` attribute has the correct syntax and actually
+            // specifies the primitive representation.
+            attr.parse_nested_meta(|meta| {
+                repr_type = Some(
+                    meta.path
+                        .get_ident()
+                        .filter(|ident| INTEGER_NAMES.iter().any(|int| ident == int))
+                        .ok_or_else(|| {
+                            let msg = "`repr(_)` attribute does not specify the primitive \
+                            representation (a primitive integer), but this is required \
+                            for `derive(Atom)`";
+                            Error::new(meta.input.span(), msg)
+                        })?
+                        .clone(),
+                );
+
+                Ok(())
+            })?
         }
-        _ => {
-            let msg = format!(
-                "`repr` attribute on enum '{}' does not have the form `repr(_)`, but \
-                    it should have for `derive(Atom)`",
-                input.ident,
-            );
-            return Err(Error::new(repr_attr.span(), msg));
-        }
-    };
+    }
+
+    let repr_type = repr_type.ok_or_else(|| {
+        let msg = format!(
+            "no `repr(_)` attribute on enum '{}', but such an attribute is \
+                required to automatically derive `Atom`",
+            input.ident,
+        );
+        Error::new(Span::call_site(), msg)
+    })?;
 
     // Check that all variants have no fields. In other words: that the enum is
     // C-like.
