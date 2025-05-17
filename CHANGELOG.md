@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.4.3] - 2025-05-17
+- Update `syn` dependency to 2.x (only relevant when using `derive` feature) in #15 (thanks `@edwloef`)
+
 ## [0.4.2] - 2024-10-18
 - Add `Send + Sync + Unpin` bound to `PrimitiveAtom::Impl`.
   As a consequence, these traits are now implemented for `Atomic<T>` unconditionally.
@@ -86,7 +89,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Everything.
 
 
-[Unreleased]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/LukasKalbertodt/atomig/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/LukasKalbertodt/atomig/compare/v0.3.3...v0.4.0

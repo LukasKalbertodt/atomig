@@ -1,6 +1,6 @@
 [package]
 name = "atomig"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Lukas Kalbertodt <lukas.kalbertodt@gmail.com>"]
 edition = "2021"
 
@@ -21,7 +21,7 @@ categories = ["concurrency", "hardware-support", "no-std"]
 derive = ["atomig-macro"]
 
 [dependencies]
-atomig-macro = { version = "=0.3.0", path = "atomig-macro", optional = true }
+atomig-macro = { version = "=0.4.0", path = "atomig-macro", optional = true }
 serde = { version = "1", default-features = false, optional = true }
 
 [dev-dependencies]
