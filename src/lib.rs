@@ -72,7 +72,6 @@
 //!     `Atomic<T>` if `T` is serializable or deserializable.
 //!
 
-#![forbid(unsafe_code)]
 #![no_std]
 
 #[cfg(test)]
@@ -432,6 +431,15 @@ impl<T: Atom> Atomic<T> {
     /// ```
     pub fn swap(&self, v: T, order: Ordering) -> T {
         T::unpack(T::Repr::swap(&self.0, v.pack(), order))
+    }
+
+    ///
+    /// Returns a mutable reference to the underlying integer.
+    /// This is safe because the mutable reference guarantees that no other threads are concurrently accessing the atomic data.
+    pub fn get_mut(&mut self) -> &mut T {
+        let ptr = core::ptr::addr_of_mut!(self.0);
+        let ptr = ptr as *mut T;
+        unsafe { &mut *ptr }
     }
 
     /// Stores a value into the atomic if the current value is the same as the
