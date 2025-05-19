@@ -269,3 +269,12 @@ fn _atomic_is_always_send_sync<T: Atom>(a: Atomic<T>) {
 
     requires_send_sync(a);
 }
+
+#[test]
+fn test_get_mut() {
+    let mut i = Atomic::<i32>::new(0);
+    let x = i.get_mut();
+    *x = 20;
+
+    assert_eq!(i.load(Ordering::Acquire), 20);
+}
